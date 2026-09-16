@@ -1,0 +1,29 @@
+[project]
+name = "wikiguard-py"
+version = "0.1.0"
+description = "Real-time Wikipedia edit-integrity monitor (Kafka-centric Python port of wiki-guard)"
+authors = [
+    { name = "nemiys", email = "nemiys@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiokafka>=0.14.0",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.141.1",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "redis>=8.1.0",
+    "sqlalchemy[asyncio]>=2.0.54",
+    "uvicorn[standard]>=0.53.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
