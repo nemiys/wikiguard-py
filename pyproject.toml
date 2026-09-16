@@ -26,4 +26,21 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.7",
 ]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+# Small, deliberately-readable rule set for a learning project — not the
+# maximal strict config. E = pycodestyle errors, F = pyflakes (unused
+# imports/vars, real bugs), I = import sorting (replaces isort), UP =
+# modernize syntax for the Python version we target, B = flake8-bugbear
+# (common non-obvious bug patterns).
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
