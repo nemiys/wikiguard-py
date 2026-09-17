@@ -46,4 +46,4 @@ Python 3.12, `uv` (לא pip+venv), FastAPI (async), `aiokafka`, `redis.asyncio`,
 ## עבודה
 
 - תקשורת בעברית.
-- git commit/push — לפי בקשת המשתמש. **Attribution:** כן — `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` בסוף כל הודעת קומיט (בניגוד ל-`wiki-guard`, שם המדיניות ההפוכה — בלי attribution).
+- git commit/push — לפי בקשת המשתמש. **בסוף כל Stage — לשאול במפורש אם לבצע קומיט** (לא להניח, ולא לחכות שהמשתמש יזכור לבקש בעצמו). אם מאושר: קומיט נפרד לכל Stage (לא קומיט ענק אחד), בסגנון ההודעות הקיים בהיסטוריה (`Stage N: ...`, bullet points בגוף ההודעה). **Attribution:** כן — `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` בסוף כל הודעת קומיט (בניגוד ל-`wiki-guard`, שם המדיניות ההפוכה — בלי attribution).
