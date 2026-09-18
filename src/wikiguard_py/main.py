@@ -1,14 +1,26 @@
-"""FastAPI application entrypoint.
+"""FastAPI application entrypoint — rules CRUD + alert history (Stage 6)."""
 
-Stage 0 skeleton — just enough to prove the app boots and the toolchain
-(uv, FastAPI, uvicorn) works end-to-end. The REST API surface (rules CRUD,
-alerts) is built in Stage 6, once the domain/producer/consumer/persistence
-layers underneath it exist.
-"""
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-app = FastAPI(title="wikiguard-py")
+from wikiguard_py.api.alerts import router as alerts_router
+from wikiguard_py.api.threshold_rules import router as threshold_rules_router
+from wikiguard_py.api.window_count_rules import router as window_count_rules_router
+from wikiguard_py.persistence.database import create_tables
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await create_tables()
+    yield
+
+
+app = FastAPI(title="wikiguard-py", lifespan=lifespan)
+
+app.include_router(threshold_rules_router)
+app.include_router(window_count_rules_router)
+app.include_router(alerts_router)
 
 
 @app.get("/health")

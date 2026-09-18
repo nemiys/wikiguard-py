@@ -42,6 +42,11 @@ src = ["src"]
 # (common non-obvious bug patterns).
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection pattern requires `Depends(...)` as an
+# argument default — that's how the framework recognizes it, not a bug.
+extend-immutable-calls = ["fastapi.Depends"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
