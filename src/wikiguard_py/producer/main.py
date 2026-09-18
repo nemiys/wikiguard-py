@@ -7,17 +7,16 @@ from wikiguard_py.producer.kafka_publisher import KafkaEventPublisher
 from wikiguard_py.producer.normalizer import normalize_recentchange
 from wikiguard_py.producer.topics import ensure_topic_exists
 from wikiguard_py.producer.wikimedia_stream import stream_recentchanges_with_retry
+from wikiguard_py.settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
-
 
 async def run() -> None:
-    await ensure_topic_exists(KAFKA_BOOTSTRAP_SERVERS)
+    await ensure_topic_exists(settings.kafka_bootstrap_servers)
 
-    publisher = KafkaEventPublisher(KAFKA_BOOTSTRAP_SERVERS)
+    publisher = KafkaEventPublisher(settings.kafka_bootstrap_servers)
     await publisher.start()
     try:
         async for raw in stream_recentchanges_with_retry():

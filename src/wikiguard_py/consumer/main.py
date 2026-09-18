@@ -16,14 +16,12 @@ from wikiguard_py.domain.models import WikiEditEvent
 from wikiguard_py.persistence.alerts import record_alert
 from wikiguard_py.persistence.database import create_tables
 from wikiguard_py.producer.kafka_publisher import TOPIC
+from wikiguard_py.settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
 CONSUMER_GROUP = "wikiguard-consumers"
-REDIS_HOST = "localhost"
-REDIS_PORT = 6380
 
 RULE_REFRESH_INTERVAL_SECONDS = 10
 
@@ -33,10 +31,10 @@ async def run() -> None:
 
     consumer = AIOKafkaConsumer(
         TOPIC,
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id=CONSUMER_GROUP,
     )
-    redis = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    redis = Redis(host=settings.redis_host, port=settings.redis_port, decode_responses=True)
 
     evaluators = await load_evaluators(redis)
     last_refresh = time.monotonic()
