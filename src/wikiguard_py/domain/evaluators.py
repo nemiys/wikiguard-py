@@ -16,7 +16,8 @@ from wikiguard_py.domain.models import WikiEditEvent
 
 
 class ThresholdEvaluator:
-    def __init__(self, byte_threshold: int) -> None:
+    def __init__(self, rule_id: int, byte_threshold: int) -> None:
+        self.rule_id = rule_id
         self.byte_threshold = byte_threshold
 
     async def evaluate(self, event: WikiEditEvent) -> bool:
@@ -36,7 +37,7 @@ class WindowCountEvaluator:
     def __init__(
         self,
         redis: Redis,
-        rule_id: str,
+        rule_id: int | str,
         window_seconds: int,
         edit_count_threshold: int,
     ) -> None:

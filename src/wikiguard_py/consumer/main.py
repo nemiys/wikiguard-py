@@ -1,17 +1,20 @@
 """Consumer entrypoint: reads WikiEditEvents from Kafka, runs every active rule.
 
-Stage 4 scope: two hardcoded rules, log-only. Dynamic rules loaded from
-Postgres arrive in Stage 5.
+Rules are loaded from Postgres (not hardcoded) and reloaded periodically, so
+a rule change takes effect without restarting the consumer.
 """
 
 import asyncio
 import logging
+import time
 
 from aiokafka import AIOKafkaConsumer
 from redis.asyncio import Redis
 
-from wikiguard_py.domain.evaluators import ThresholdEvaluator, WindowCountEvaluator
+from wikiguard_py.consumer.rule_loader import load_evaluators
 from wikiguard_py.domain.models import WikiEditEvent
+from wikiguard_py.persistence.alerts import record_alert
+from wikiguard_py.persistence.database import create_tables
 from wikiguard_py.producer.kafka_publisher import TOPIC
 
 logging.basicConfig(level=logging.INFO)
@@ -22,41 +25,44 @@ CONSUMER_GROUP = "wikiguard-consumers"
 REDIS_HOST = "localhost"
 REDIS_PORT = 6380
 
-# Placeholders until Stage 5 loads real rules from Postgres.
-BYTE_THRESHOLD = 300
-WINDOW_SECONDS = 300
-WINDOW_EDIT_THRESHOLD = 5
+RULE_REFRESH_INTERVAL_SECONDS = 10
 
 
 async def run() -> None:
+    await create_tables()
+
     consumer = AIOKafkaConsumer(
         TOPIC,
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         group_id=CONSUMER_GROUP,
     )
     redis = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-    evaluators = [
-        ThresholdEvaluator(byte_threshold=BYTE_THRESHOLD),
-        WindowCountEvaluator(
-            redis=redis,
-            rule_id="window-count-default",
-            window_seconds=WINDOW_SECONDS,
-            edit_count_threshold=WINDOW_EDIT_THRESHOLD,
-        ),
-    ]
+
+    evaluators = await load_evaluators(redis)
+    last_refresh = time.monotonic()
 
     await consumer.start()
     try:
         async for message in consumer:
+            if time.monotonic() - last_refresh >= RULE_REFRESH_INTERVAL_SECONDS:
+                evaluators = await load_evaluators(redis)
+                last_refresh = time.monotonic()
+
             event = WikiEditEvent.model_validate_json(message.value)
             for evaluator in evaluators:
                 if await evaluator.evaluate(event):
+                    rule_type = type(evaluator).__name__
                     logger.info(
                         "ALERT [%s]: %s changed %d bytes on %s",
-                        type(evaluator).__name__,
+                        rule_type,
                         event.user,
                         event.byte_change,
                         event.page_title,
+                    )
+                    await record_alert(
+                        rule_type=rule_type,
+                        rule_id=evaluator.rule_id,
+                        page_title=event.page_title,
                     )
     finally:
         await consumer.stop()
