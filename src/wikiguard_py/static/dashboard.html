@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>wikiguard-py Dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #111; color: #eee; }
+  h1 { font-size: 1.2rem; }
+  h2 { font-size: 1rem; margin-top: 2rem; border-bottom: 1px solid #333; padding-bottom: .3rem; }
+  table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
+  th, td { text-align: right; padding: .4rem .6rem; border-bottom: 1px solid #222; font-size: .9rem; }
+  th { color: #888; font-weight: normal; }
+  .inactive { opacity: .4; }
+  #status { color: #888; font-size: .8rem; }
+</style>
+</head>
+<body>
+  <h1>wikiguard-py — ניטור בזמן אמת</h1>
+  <div id="status">טוען...</div>
+
+  <h2>Threshold rules</h2>
+  <table id="threshold-rules"><thead>
+    <tr><th>id</th><th>byte_threshold</th><th>פעיל</th></tr>
+  </thead><tbody></tbody></table>
+
+  <h2>Window-count rules</h2>
+  <table id="window-count-rules"><thead>
+    <tr><th>id</th><th>window_seconds</th><th>edit_count_threshold</th><th>פעיל</th></tr>
+  </thead><tbody></tbody></table>
+
+  <h2>התראות אחרונות</h2>
+  <table id="alerts"><thead>
+    <tr><th>rule_type</th><th>rule_id</th><th>page_title</th><th>fired_at</th></tr>
+  </thead><tbody></tbody></table>
+
+<script>
+  const REFRESH_MS = 4000;
+
+  function renderRows(tableId, rows, toCells) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    tbody.innerHTML = rows.map(row => {
+      const cells = toCells(row).map(c => `<td>${c}</td>`).join("");
+      const cls = row.is_active === false ? "inactive" : "";
+      return `<tr class="${cls}">${cells}</tr>`;
+    }).join("");
+  }
+
+  async function refreshDashboard() {
+    const [thresholdRules, windowRules, alerts] = await Promise.all([
+      fetch("/threshold-rules").then(r => r.json()),
+      fetch("/window-count-rules").then(r => r.json()),
+      fetch("/alerts").then(r => r.json()),
+    ]);
+
+    renderRows("threshold-rules", thresholdRules,
+      r => [r.id, r.byte_threshold, r.is_active ? "כן" : "לא"]);
+    renderRows("window-count-rules", windowRules,
+      r => [r.id, r.window_seconds, r.edit_count_threshold, r.is_active ? "כן" : "לא"]);
+    renderRows("alerts", alerts.slice(0, 30),
+      r => [r.rule_type, r.rule_id, r.page_title, r.fired_at]);
+
+    document.getElementById("status").textContent =
+      `עודכן: ${new Date().toLocaleTimeString("he-IL")}`;
+  }
+
+  refreshDashboard();
+  setInterval(refreshDashboard, REFRESH_MS);
+</script>
+</body>
+</html>
