@@ -21,6 +21,11 @@ def test_non_content_namespace_is_discarded(make_raw_change):
     assert normalize_recentchange(raw) is None
 
 
+def test_non_wikipedia_project_is_discarded(make_raw_change):
+    raw = make_raw_change(wiki="wikidatawiki", server_name="www.wikidata.org")
+    assert normalize_recentchange(raw) is None
+
+
 def test_missing_user_defaults_to_unknown(make_raw_change):
     raw = make_raw_change()
     del raw["user"]

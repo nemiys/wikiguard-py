@@ -12,6 +12,7 @@ class WikiEditEvent(BaseModel):
     event_id: str
     page_title: str
     wiki: str
+    server_name: str
     user: str
     byte_change: int
     is_bot: bool

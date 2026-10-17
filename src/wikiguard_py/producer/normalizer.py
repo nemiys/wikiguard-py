@@ -18,6 +18,10 @@ def normalize_recentchange(raw: dict) -> WikiEditEvent | None:
     if namespace != CONTENT_NAMESPACE:
         return None
 
+    server_name = raw["server_name"]
+    if not server_name.endswith(".wikipedia.org"):
+        return None
+
     wiki = raw["wiki"]
     revision_id = raw["revision"]["new"]
     old_length = raw["length"]["old"]
@@ -27,6 +31,7 @@ def normalize_recentchange(raw: dict) -> WikiEditEvent | None:
         event_id=f"{wiki}:{revision_id}",
         page_title=raw["title"],
         wiki=wiki,
+        server_name=server_name,
         user=raw.get("user", "unknown"),
         byte_change=new_length - old_length,
         is_bot=raw.get("bot", False),

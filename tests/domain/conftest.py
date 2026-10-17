@@ -14,6 +14,7 @@ def make_event():
             event_id="hewiki:123",
             page_title="עמוד ראשי",
             wiki="hewiki",
+            server_name="he.wikipedia.org",
             user="some_user",
             byte_change=100,
             is_bot=False,

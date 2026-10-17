@@ -11,6 +11,7 @@ def make_raw_change():
             "namespace": 0,
             "title": "עמוד ראשי",
             "wiki": "hewiki",
+            "server_name": "he.wikipedia.org",
             "user": "some_user",
             "bot": False,
             "revision": {"old": 100, "new": 123},

@@ -15,6 +15,7 @@ def test_wrong_type_is_rejected():
             event_id="hewiki:123",
             page_title="עמוד ראשי",
             wiki="hewiki",
+            server_name="he.wikipedia.org",
             user="some_user",
             byte_change="not a number",
             is_bot=False,

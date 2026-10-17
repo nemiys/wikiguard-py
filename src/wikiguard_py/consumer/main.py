@@ -61,6 +61,10 @@ async def run() -> None:
                         rule_type=rule_type,
                         rule_id=evaluator.rule_id,
                         page_title=event.page_title,
+                        wiki=event.wiki,
+                        server_name=event.server_name,
+                        user=event.user,
+                        byte_change=event.byte_change,
                     )
     finally:
         await consumer.stop()

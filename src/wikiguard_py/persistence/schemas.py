@@ -58,4 +58,8 @@ class FiredAlertRead(BaseModel):
     rule_type: str
     rule_id: int
     page_title: str
+    wiki: str
+    server_name: str
+    user: str
+    byte_change: int
     fired_at: datetime

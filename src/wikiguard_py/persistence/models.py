@@ -37,7 +37,11 @@ class FiredAlertModel(Base):
     """One row per alert that actually fired — never one row per raw event
     (see architecture-plan.md principle #5). rule_type + rule_id point at a
     row in whichever rules table fired this, with no DB-enforced foreign
-    key — a deliberate, agreed simplification (see chat)."""
+    key — a deliberate, agreed simplification (see chat).
+
+    wiki/user/byte_change are remembered from the WikiEditEvent that
+    triggered the alert — still not the full raw event, just enough context
+    to make an alert record meaningful on its own."""
 
     __tablename__ = "fired_alerts"
 
@@ -45,4 +49,8 @@ class FiredAlertModel(Base):
     rule_type: Mapped[str]
     rule_id: Mapped[int]
     page_title: Mapped[str]
+    wiki: Mapped[str]
+    server_name: Mapped[str]
+    user: Mapped[str]
+    byte_change: Mapped[int]
     fired_at: Mapped[datetime] = mapped_column(server_default=func.now())
