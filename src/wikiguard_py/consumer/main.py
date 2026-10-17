@@ -12,6 +12,7 @@ from aiokafka import AIOKafkaConsumer
 
 from wikiguard_py.consumer.rule_loader import load_evaluators
 from wikiguard_py.consumer.stats import record_event_stats
+from wikiguard_py.domain.evaluators import WindowCountEvaluator
 from wikiguard_py.domain.models import WikiEditEvent
 from wikiguard_py.persistence.alerts import record_alert
 from wikiguard_py.persistence.database import create_tables
@@ -65,6 +66,8 @@ async def run() -> None:
                         event.byte_change,
                         event.page_title,
                     )
+                    is_window_count = isinstance(evaluator, WindowCountEvaluator)
+                    edit_count = evaluator.last_count if is_window_count else None
                     await record_alert(
                         rule_type=rule_type,
                         rule_id=evaluator.rule_id,
@@ -73,6 +76,7 @@ async def run() -> None:
                         server_name=event.server_name,
                         user=event.user,
                         byte_change=event.byte_change,
+                        edit_count=edit_count,
                     )
     finally:
         await consumer.stop()

@@ -33,6 +33,7 @@ async def test_count_reaches_threshold_fires(redis_client, make_event):
         )
         result = await evaluator.evaluate(event)
     assert result is True
+    assert evaluator.last_count == 3
 
 
 async def test_old_edits_fall_out_of_window(redis_client, make_event):

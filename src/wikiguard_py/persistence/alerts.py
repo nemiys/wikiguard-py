@@ -12,6 +12,7 @@ async def record_alert(
     server_name: str,
     user: str,
     byte_change: int,
+    edit_count: int | None = None,
 ) -> None:
     async with async_session_factory() as session:
         session.add(
@@ -23,6 +24,7 @@ async def record_alert(
                 server_name=server_name,
                 user=user,
                 byte_change=byte_change,
+                edit_count=edit_count,
             )
         )
         await session.commit()

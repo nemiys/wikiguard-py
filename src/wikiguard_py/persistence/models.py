@@ -53,4 +53,5 @@ class FiredAlertModel(Base):
     server_name: Mapped[str]
     user: Mapped[str]
     byte_change: Mapped[int]
+    edit_count: Mapped[int | None]
     fired_at: Mapped[datetime] = mapped_column(server_default=func.now())

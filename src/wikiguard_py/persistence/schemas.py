@@ -62,4 +62,5 @@ class FiredAlertRead(BaseModel):
     server_name: str
     user: str
     byte_change: int
+    edit_count: int | None
     fired_at: datetime

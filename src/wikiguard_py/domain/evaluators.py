@@ -45,6 +45,7 @@ class WindowCountEvaluator:
         self.rule_id = rule_id
         self.window_seconds = window_seconds
         self.edit_count_threshold = edit_count_threshold
+        self.last_count = 0
 
     async def evaluate(self, event: WikiEditEvent) -> bool:
         key = f"rule:{self.rule_id}:{event.page_title}:window"
@@ -54,5 +55,6 @@ class WindowCountEvaluator:
         await self.redis.zremrangebyscore(key, "-inf", f"({cutoff}")
         await self.redis.expire(key, self.window_seconds * 2)
         count = await self.redis.zcard(key)
+        self.last_count = count
 
         return count >= self.edit_count_threshold
