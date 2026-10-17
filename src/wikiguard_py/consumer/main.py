@@ -50,6 +50,11 @@ async def run() -> None:
             event = WikiEditEvent.model_validate_json(message.value)
             await record_event_stats(redis, event)
 
+            # Bot edits are routine/automated, not suspicious by nature — they
+            # still count toward stream stats above, just never toward rules.
+            if event.is_bot:
+                continue
+
             for evaluator in evaluators:
                 if await evaluator.evaluate(event):
                     rule_type = type(evaluator).__name__

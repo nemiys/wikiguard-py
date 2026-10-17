@@ -239,7 +239,10 @@
   }
 
   function relativeTime(isoString) {
-    const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+    // Postgres returns a UTC timestamp with no "Z"/offset suffix — without
+    // it, `new Date(...)` assumes *local* time, which silently shifts every
+    // value by the browser's UTC offset. Appending "Z" fixes that.
+    const seconds = Math.floor((Date.now() - new Date(isoString + "Z").getTime()) / 1000);
     if (seconds < 60) return "לפני רגע";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `לפני ${minutes} דקות`;
@@ -282,7 +285,7 @@
     const bucketMs = (windowMinutes * 60 * 1000) / numBuckets;
     const counts = new Array(numBuckets).fill(0);
     for (const a of alerts) {
-      const age = now - new Date(a.fired_at).getTime();
+      const age = now - new Date(a.fired_at + "Z").getTime();   // see relativeTime()
       if (age < 0 || age > windowMinutes * 60 * 1000) continue;
       const idx = numBuckets - 1 - Math.floor(age / bucketMs);
       if (idx >= 0 && idx < numBuckets) counts[idx]++;
