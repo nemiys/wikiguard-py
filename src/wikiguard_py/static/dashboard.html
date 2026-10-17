@@ -63,66 +63,188 @@
   .bar-track { background: #1a1a1a; border-radius: 3px; height: .4rem; overflow: hidden; }
   .bar-fill { background: #6ee7a0; height: 100%; }
 
-  #bot-ratio { font-size: .85rem; color: #aaa; margin-top: 1rem; }
+  .tab-nav { display: flex; gap: 1.2rem; margin: 1.5rem 0 1rem; border-bottom: 1px solid #333; }
+  .tab-link { color: #888; text-decoration: none; font-size: .9rem; padding-bottom: .6rem; border-bottom: 2px solid transparent; }
+  .tab-link.active { color: #6ee7a0; border-bottom-color: #6ee7a0; }
+
+  .panel { background: #161616; border: 1px solid #292929; border-radius: 8px; padding: 1rem; }
+  .panel h3 { margin: 0 0 .6rem; font-size: .9rem; color: #888; font-weight: normal; }
+  .panel table { margin-top: 0; }
+  .panel-link { display: block; margin-top: .6rem; font-size: .8rem; color: #6ee7a0; text-decoration: none; }
+  .panel-link:hover { text-decoration: underline; }
+
+  .info-details { margin: .3rem 0 1rem; font-size: .85rem; }
+  .info-details summary { cursor: pointer; color: #888; }
+  .info-details[open] summary { color: #6ee7a0; margin-bottom: .5rem; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .8rem; margin-top: .5rem; }
+  .kpi-card { background: #161616; border: 1px solid #292929; border-radius: 8px; padding: .7rem 1rem; text-align: center; }
+  .kpi-value { font-size: 1.6rem; font-weight: 600; color: #6ee7a0; font-family: ui-monospace, monospace; }
+  .kpi-label { font-size: .75rem; color: #888; margin-top: .2rem; }
+
+  .chart-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+  .chart-row .panel { flex: 1; min-width: 260px; }
+
+  /* direction: ltr so "oldest" lands under the SVG's actual left edge and
+     "now" under its right edge, regardless of the page's own RTL direction —
+     SVG content doesn't mirror itself for dir="rtl" the way text does. */
+  .sparkline-labels { display: flex; justify-content: space-between; direction: ltr; font-size: .7rem; color: #666; margin-top: .1rem; max-width: 300px; }
+
+  .sparkline-bar { fill: #6ee7a0; transition: fill .1s; }
+  .sparkline-bar:hover { fill: #a8f5c4; stroke: #eee; stroke-width: 1; cursor: pointer; }
+
+  .alerts-filters { display: flex; gap: .6rem; margin: .5rem 0; flex-wrap: wrap; }
+  .alerts-filters select, .alerts-filters input {
+    background: #1a1a1a; color: #eee; border: 1px solid #333;
+    padding: .3rem .5rem; border-radius: 4px; font-size: .85rem;
+  }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: #6ee7a0; }
+  th.sortable.sort-active { color: #6ee7a0; }
+  .pagination { display: flex; align-items: center; gap: .8rem; margin-top: .6rem; font-size: .85rem; color: #aaa; }
+  .pagination button {
+    background: #1a1a1a; color: #eee; border: 1px solid #333;
+    padding: .3rem .8rem; border-radius: 4px; cursor: pointer; font-size: .85rem;
+  }
+  .pagination button:disabled { opacity: .4; cursor: default; }
 </style>
 </head>
 <body>
   <h1>wikiguard-py — ניטור בזמן אמת</h1>
   <div id="status">טוען...</div>
 
-  <p class="intro">
-    המערכת מנטרת בזמן אמת את זרם העריכות הגלובלי של ויקיפדיה
-    (Wikimedia EventStreams) ומפעילה כללים לאיתור דפוסי עריכה חשודים —
-    ונדליזם ומלחמות עריכה.
-  </p>
-  <dl class="rule-explainer">
-    <div><dt>Threshold</dt><dd>מתריע על עריכה בודדת שמשנה יותר מ-X בייטים בבת אחת.</dd></div>
-    <div><dt>Window-count</dt><dd>מתריע כשדף נערך יותר מ-N פעמים בתוך חלון זמן נתון.</dd></div>
-  </dl>
+  <details class="info-details">
+    <summary>ⓘ על המערכת</summary>
+    <p class="intro">
+      המערכת מנטרת בזמן אמת את זרם העריכות הגלובלי של ויקיפדיה
+      (Wikimedia EventStreams) ומפעילה כללים לאיתור דפוסי עריכה חשודים —
+      ונדליזם ומלחמות עריכה.
+    </p>
+    <dl class="rule-explainer">
+      <div><dt>Threshold</dt><dd>מתריע על עריכה בודדת שמשנה יותר מ-X בייטים בבת אחת.</dd></div>
+      <div><dt>Window-count</dt><dd>מתריע כשדף נערך יותר מ-N פעמים בתוך חלון זמן נתון.</dd></div>
+    </dl>
+  </details>
 
-  <h2>פעילות חיה</h2>
-  <div id="pulse" class="pulse"></div>
-  <div id="biggest-edit" class="caption"></div>
+  <nav class="tab-nav">
+    <a href="#overview" class="tab-link" data-tab="overview">סקירה</a>
+    <a href="#rules" class="tab-link" data-tab="rules">כללים</a>
+    <a href="#alerts" class="tab-link" data-tab="alerts">כל ההתראות</a>
+  </nav>
 
-  <div id="trend-sparkline"></div>
-  <div id="trend-sparkline-caption" class="caption"></div>
-
-  <div class="stats-grid">
-    <div class="stats-col">
-      <div class="stats-col-label">ויקיפדיות הכי פעילות <span class="caption">(מאז הפעלת המערכת)</span></div>
-      <div id="top-wikis" class="bar-list"></div>
+  <div class="tab-panel" data-tab="overview">
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-value" id="kpi-events-60s">–</div>
+        <div class="kpi-label">עריכות / 60 שניות</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="kpi-total-events">–</div>
+        <div class="kpi-label">סה״כ מאז ההפעלה</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="kpi-bot-pct">–</div>
+        <div class="kpi-label">אחוז בוטים</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="kpi-active-rules">–</div>
+        <div class="kpi-label">כללים פעילים</div>
+      </div>
     </div>
-    <div class="stats-col">
-      <div class="stats-col-label">דפים חמים <span class="caption">(מאז הפעלת המערכת)</span></div>
-      <div id="top-pages" class="bar-list"></div>
+    <div id="pulse" class="pulse"></div>
+
+    <div class="chart-row">
+      <div class="panel">
+        <h3>מגמת עריכות <span class="caption">(כל עמודה = דקה אחת)</span></h3>
+        <div id="trend-sparkline"></div>
+        <div class="sparkline-labels"><span>לפני 30 דקות</span><span>עכשיו</span></div>
+        <div id="trend-sparkline-caption" class="caption"></div>
+      </div>
+      <div class="panel">
+        <h3>קצב התראות <span class="caption">(כל עמודה = דקה אחת)</span></h3>
+        <div id="sparkline-preview"></div>
+        <div class="sparkline-labels"><span>לפני 30 דקות</span><span>עכשיו</span></div>
+        <div id="sparkline-preview-caption" class="caption"></div>
+      </div>
     </div>
-    <div class="stats-col">
-      <div class="stats-col-label">עורכים מובילים <span class="caption">(בני אדם, מאז הפעלת המערכת)</span></div>
-      <div id="top-editors" class="bar-list"></div>
+
+    <div class="stats-grid">
+      <div class="stats-col">
+        <div class="stats-col-label">ויקיפדיות הכי פעילות <span class="caption">(מאז הפעלת המערכת)</span></div>
+        <div id="top-wikis" class="bar-list"></div>
+      </div>
+      <div class="stats-col">
+        <div class="stats-col-label">דפים חמים <span class="caption">(מאז הפעלת המערכת)</span></div>
+        <div id="top-pages" class="bar-list"></div>
+      </div>
+      <div class="stats-col">
+        <div class="stats-col-label">עורכים מובילים <span class="caption">(בני אדם, מאז הפעלת המערכת)</span></div>
+        <div id="top-editors" class="bar-list"></div>
+      </div>
+    </div>
+    <div id="biggest-edit" class="caption"></div>
+
+    <div class="panel">
+      <h3>התראות אחרונות</h3>
+      <table id="alerts-preview"><thead>
+        <tr><th>חשיבות</th><th>כלל</th><th>פרטים</th><th>דף</th><th>מתי</th></tr>
+      </thead><tbody></tbody></table>
+      <a class="panel-link" href="#alerts">לכל ההתראות ←</a>
     </div>
   </div>
-  <div id="bot-ratio"></div>
 
-  <h2>הגדרות ניטור</h2>
+  <div class="tab-panel" data-tab="rules" hidden>
+    <h2>הגדרות ניטור</h2>
 
-  <div class="rule-group">
-    <div class="rule-group-label">שינוי גדול בבת אחת</div>
-    <div id="threshold-rules" class="rule-cards"></div>
+    <div class="rule-group">
+      <div class="rule-group-label">שינוי גדול בבת אחת</div>
+      <div id="threshold-rules" class="rule-cards"></div>
+    </div>
+
+    <div class="rule-group">
+      <div class="rule-group-label">עריכות חוזרות בזמן קצר</div>
+      <div id="window-count-rules" class="rule-cards"></div>
+    </div>
   </div>
 
-  <div class="rule-group">
-    <div class="rule-group-label">עריכות חוזרות בזמן קצר</div>
-    <div id="window-count-rules" class="rule-cards"></div>
+  <div class="tab-panel" data-tab="alerts" hidden>
+    <h2>קצב התראות <span class="caption">(כל עמודה = דקה אחת)</span></h2>
+    <div id="sparkline"></div>
+    <div class="sparkline-labels"><span>לפני 30 דקות</span><span>עכשיו</span></div>
+    <div id="sparkline-caption" class="caption"></div>
+
+    <h2>כל ההתראות</h2>
+    <div class="alerts-filters">
+      <select id="filter-rule-type">
+        <option value="">כל סוגי הכלל</option>
+        <option value="ThresholdEvaluator">שינוי גדול בבת אחת</option>
+        <option value="WindowCountEvaluator">עריכות חוזרות בזמן קצר</option>
+      </select>
+      <select id="filter-severity">
+        <option value="">כל רמות החשיבות</option>
+        <option value="high">דחוף</option>
+        <option value="medium">חשוד</option>
+        <option value="low">שגרתי</option>
+      </select>
+      <select id="filter-wiki">
+        <option value="">כל הוויקיפדיות</option>
+      </select>
+    </div>
+    <table id="alerts"><thead>
+      <tr>
+        <th>חשיבות</th>
+        <th class="sortable" data-sort="rule_type">כלל</th>
+        <th class="sortable" data-sort="byte_change">פרטים</th>
+        <th>דף</th>
+        <th class="sortable" data-sort="fired_at">מתי</th>
+      </tr>
+    </thead><tbody></tbody></table>
+    <div class="pagination">
+      <button type="button" id="alerts-prev-page">◀ הקודם</button>
+      <span id="alerts-page-info"></span>
+      <button type="button" id="alerts-next-page">הבא ▶</button>
+    </div>
   </div>
-
-  <h2>קצב התראות</h2>
-  <div id="sparkline"></div>
-  <div id="sparkline-caption" class="caption"></div>
-
-  <h2>התראות אחרונות</h2>
-  <table id="alerts"><thead>
-    <tr><th>חשיבות</th><th>כלל</th><th>שינוי</th><th>דף</th><th>מתי</th></tr>
-  </thead><tbody></tbody></table>
 
 <script>
   const REFRESH_MS = 4000;
@@ -165,6 +287,14 @@
         <input type="checkbox" data-field="is_active" ${row.is_active ? "checked" : ""}>
         פעיל
       </label>`;
+  }
+
+  // Feeds the overview KPI card — the full editable cards live only in the
+  // "rules" tab, this is just a count.
+  function renderRulesSummary(thresholdRules, windowRules) {
+    const activeCount =
+      thresholdRules.filter(r => r.is_active).length + windowRules.filter(r => r.is_active).length;
+    document.getElementById("kpi-active-rules").textContent = activeCount;
   }
 
   // Each rule type reads as one plain-language sentence with its numbers as
@@ -238,11 +368,13 @@
     return `https://${alert.server_name}/wiki/${encodeURIComponent(alert.page_title)}`;
   }
 
+  // Postgres returns a UTC timestamp with no "Z"/offset suffix — without
+  // it, `new Date(...)` assumes *local* time, which silently shifts every
+  // value by the browser's UTC offset. Appending "Z" fixes that everywhere
+  // a fired_at string gets parsed.
   function relativeTime(isoString) {
-    // Postgres returns a UTC timestamp with no "Z"/offset suffix — without
-    // it, `new Date(...)` assumes *local* time, which silently shifts every
-    // value by the browser's UTC offset. Appending "Z" fixes that.
-    const seconds = Math.floor((Date.now() - new Date(isoString + "Z").getTime()) / 1000);
+    const date = new Date(isoString + "Z");
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
     if (seconds < 60) return "לפני רגע";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `לפני ${minutes} דקות`;
@@ -251,54 +383,58 @@
     return `לפני ${Math.floor(hours / 24)} ימים`;
   }
 
+  // Shown alongside the relative text, not just on hover — "when exactly"
+  // matters here (alerts can fire multiple times per second).
+  function exactTime(isoString) {
+    return new Date(isoString + "Z").toLocaleString("he-IL", { dateStyle: "short", timeStyle: "medium" });
+  }
+
   function formatByteChange(byteChange) {
     const sign = byteChange > 0 ? "+" : "";
     return `${sign}${byteChange}`;
   }
 
-  function renderAlerts(alerts) {
-    const tbody = document.querySelector("#alerts tbody");
+  // Window-Count alerts fire on edit *count*, not edit size — showing the
+  // triggering edit's byte_change there would be meaningless. Threshold
+  // alerts still show the byte change, which is the whole point of that rule.
+  function formatChangeColumn(alert) {
+    if (alert.rule_type === "WindowCountEvaluator" && alert.edit_count != null) {
+      return `${alert.edit_count} עריכות`;
+    }
+    return formatByteChange(alert.byte_change);
+  }
+
+  function renderAlerts(alerts, tableId) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
     if (alerts.length === 0) {
       tbody.innerHTML = emptyStateRow(5, "לא התגלו התראות עדיין — המערכת פעילה ומחכה לעריכה שתפר אחד הכללים.");
       return;
     }
-    tbody.innerHTML = alerts.slice(0, 30).map(a => {
+    tbody.innerHTML = alerts.map(a => {
       const sev = severityOf(a);
       return `
         <tr class="sev-${sev}" title="user: ${a.user}, rule_id: ${a.rule_id}">
           <td><span class="badge sev-${sev}">${SEVERITY_LABEL[sev]}</span></td>
           <td>${RULE_LABEL[a.rule_type] ?? a.rule_type}</td>
-          <td>${formatByteChange(a.byte_change)}</td>
+          <td>${formatChangeColumn(a)}</td>
           <td>
             <a href="${pageUrl(a)}" target="_blank" rel="noopener">${a.page_title}</a>
             <div class="caption">${a.server_name}</div>
           </td>
-          <td title="${a.fired_at}">${relativeTime(a.fired_at)}</td>
+          <td>
+            ${relativeTime(a.fired_at)}
+            <div class="caption">${exactTime(a.fired_at)}</div>
+          </td>
         </tr>`;
     }).join("");
   }
 
-  // Buckets the full alert history (not just the visible slice) into trailing
-  // time windows, newest bucket last — so the chart visibly scrolls forward.
-  function bucketAlerts(alerts, numBuckets = 10, windowMinutes = 30) {
-    const now = Date.now();
-    const bucketMs = (windowMinutes * 60 * 1000) / numBuckets;
-    const counts = new Array(numBuckets).fill(0);
-    for (const a of alerts) {
-      const age = now - new Date(a.fired_at + "Z").getTime();   // see relativeTime()
-      if (age < 0 || age > windowMinutes * 60 * 1000) continue;
-      const idx = numBuckets - 1 - Math.floor(age / bucketMs);
-      if (idx >= 0 && idx < numBuckets) counts[idx]++;
-    }
-    return counts;
-  }
-
-  function renderSparkline(counts, svgId, captionId, captionText) {
+  function renderSparkline(counts, svgId, captionId, captionText, unitLabel) {
     const w = 300, h = 40, n = counts.length, barW = w / n - 2;
     const max = Math.max(1, ...counts);
     const bars = counts.map((c, i) => {
       const barH = (c / max) * (h - 4);
-      return `<rect x="${i * (w / n)}" y="${h - barH}" width="${barW}" height="${Math.max(barH, 1)}" fill="#6ee7a0" />`;
+      return `<rect class="sparkline-bar" x="${i * (w / n)}" y="${h - barH}" width="${barW}" height="${Math.max(barH, 1)}"><title>${c} ${unitLabel}</title></rect>`;
     }).join("");
     document.getElementById(svgId).innerHTML = `<svg width="${w}" height="${h}">${bars}</svg>`;
     document.getElementById(captionId).textContent = captionText(counts);
@@ -326,15 +462,20 @@
 
     document.getElementById("pulse").innerHTML = `
       <span class="pulse-dot ${isLive ? "live" : ""}"></span>
-      <span>נבדקו ${stats.events_last_60s} עריכות ב-60 השניות האחרונות · ${lastSeenText} ·
-      סה״כ ${stats.total_events} מאז הפעלת המערכת</span>`;
+      <span>${lastSeenText}</span>`;
+
+    document.getElementById("kpi-events-60s").textContent = stats.events_last_60s;
+    document.getElementById("kpi-total-events").textContent = stats.total_events.toLocaleString();
+    const totalBotHuman = stats.bot_events + stats.human_events;
+    document.getElementById("kpi-bot-pct").textContent =
+      totalBotHuman === 0 ? "–" : `${Math.round((stats.bot_events / totalBotHuman) * 100)}%`;
 
     renderBarList("top-wikis", stats.top_wikis, w => w.server_name);
     renderBarList("top-pages", stats.top_pages, p => p.page_title);
     renderBarList("top-editors", stats.top_editors, e => e.user);
 
     renderSparkline(stats.activity_trend, "trend-sparkline", "trend-sparkline-caption",
-      counts => `קצב עריכות ב-30 הדקות האחרונות (${counts.reduce((a, b) => a + b, 0)} סה״כ)`);
+      counts => `קצב עריכות ב-30 הדקות האחרונות (${counts.reduce((a, b) => a + b, 0)} סה״כ)`, "עריכות");
 
     const biggestEditEl = document.getElementById("biggest-edit");
     if (stats.biggest_edit) {
@@ -345,35 +486,171 @@
     } else {
       biggestEditEl.textContent = "";
     }
+  }
 
-    const totalBotHuman = stats.bot_events + stats.human_events;
-    const botRatioEl = document.getElementById("bot-ratio");
-    if (totalBotHuman === 0) {
-      botRatioEl.textContent = "";
-    } else {
-      const botPct = Math.round((stats.bot_events / totalBotHuman) * 100);
-      botRatioEl.textContent = `${botPct}% מהעריכות הן של בוטים, ${100 - botPct}% בני אדם`;
+  // fired_alerts grows without bound, so /alerts is paginated/filtered/sorted
+  // server-side (see api/alerts.py) — the dashboard never fetches "all of it"
+  // again. Three independent consumers, three different queries:
+  async function fetchAlertsPage(params) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== "" && value != null) query.set(key, value);
+    }
+    return fetch(`/alerts?${query}`).then(r => r.json());
+  }
+
+  // The "כל ההתראות" tab's current sort/filter/page — a click on a sortable
+  // header, a filter change, or a page button updates this and re-fetches
+  // immediately; the 4s poll also re-fetches with whatever state is current,
+  // so the table stays live no matter which page/sort/filter is selected.
+  const alertsTableState = {
+    sort: "fired_at", order: "desc", ruleType: "", severity: "", wiki: "", offset: 0, limit: 50,
+  };
+
+  // Populated once at startup from GET /alerts/wikis — a real dropdown of
+  // values that actually occur, not free text the user has to guess right.
+  async function populateWikiFilter() {
+    const wikis = await fetch("/alerts/wikis").then(r => r.json());
+    const select = document.getElementById("filter-wiki");
+    for (const wiki of wikis) {
+      const option = document.createElement("option");
+      option.value = wiki;
+      option.textContent = wiki;
+      select.appendChild(option);
     }
   }
 
-  async function refreshDashboard() {
-    const [thresholdRules, windowRules, alerts, stats] = await Promise.all([
-      fetch("/threshold-rules").then(r => r.json()),
-      fetch("/window-count-rules").then(r => r.json()),
-      fetch("/alerts").then(r => r.json()),
-      fetch("/stats").then(r => r.json()),
-    ]);
-
-    renderStats(stats);
-    renderThresholdRules(thresholdRules);
-    renderWindowCountRules(windowRules);
-    renderAlerts(alerts);
-    renderSparkline(bucketAlerts(alerts), "sparkline", "sparkline-caption",
-      counts => `${counts.reduce((a, b) => a + b, 0)} התראות ב-30 הדקות האחרונות`);
-
-    document.getElementById("status").textContent =
-      `עודכן: ${new Date().toLocaleTimeString("he-IL")}`;
+  function renderAlertsPagination(total) {
+    const totalPages = Math.max(1, Math.ceil(total / alertsTableState.limit));
+    const currentPage = Math.floor(alertsTableState.offset / alertsTableState.limit) + 1;
+    document.getElementById("alerts-page-info").textContent =
+      `עמוד ${currentPage} מתוך ${totalPages} (${total} סה״כ)`;
+    document.getElementById("alerts-prev-page").disabled = alertsTableState.offset === 0;
+    document.getElementById("alerts-next-page").disabled = currentPage >= totalPages;
   }
+
+  function updateSortHeaders() {
+    document.querySelectorAll("#alerts th.sortable").forEach(th => {
+      th.classList.toggle("sort-active", th.dataset.sort === alertsTableState.sort);
+    });
+  }
+
+  async function refreshAlertsTable() {
+    const page = await fetchAlertsPage({
+      sort: alertsTableState.sort,
+      order: alertsTableState.order,
+      rule_type: alertsTableState.ruleType,
+      severity: alertsTableState.severity,
+      wiki: alertsTableState.wiki,
+      limit: alertsTableState.limit,
+      offset: alertsTableState.offset,
+    });
+    renderAlerts(page.items, "alerts");
+    renderAlertsPagination(page.total);
+    updateSortHeaders();
+  }
+
+  async function refreshOverviewAlerts() {
+    const [previewPage, rateCounts] = await Promise.all([
+      fetchAlertsPage({ sort: "fired_at", order: "desc", limit: 5 }),
+      fetch("/alerts/rate?minutes=30&buckets=30").then(r => r.json()),  // same resolution as activity_trend — 1 minute/bar
+    ]);
+    renderAlerts(previewPage.items, "alerts-preview");
+
+    const sparklineCaption = counts => `${counts.reduce((a, b) => a + b, 0)} התראות ב-30 הדקות האחרונות`;
+    renderSparkline(rateCounts, "sparkline", "sparkline-caption", sparklineCaption, "התראות");
+    renderSparkline(rateCounts, "sparkline-preview", "sparkline-preview-caption", sparklineCaption, "התראות");
+  }
+
+  document.querySelectorAll("#alerts th.sortable").forEach(th => {
+    th.addEventListener("click", () => {
+      if (alertsTableState.sort === th.dataset.sort) {
+        alertsTableState.order = alertsTableState.order === "desc" ? "asc" : "desc";
+      } else {
+        alertsTableState.sort = th.dataset.sort;
+        alertsTableState.order = "desc";
+      }
+      alertsTableState.offset = 0;
+      refreshAlertsTable();
+    });
+  });
+
+  document.getElementById("filter-rule-type").addEventListener("change", e => {
+    alertsTableState.ruleType = e.target.value;
+    alertsTableState.offset = 0;
+    refreshAlertsTable();
+  });
+
+  document.getElementById("filter-severity").addEventListener("change", e => {
+    alertsTableState.severity = e.target.value;
+    alertsTableState.offset = 0;
+    refreshAlertsTable();
+  });
+
+  document.getElementById("filter-wiki").addEventListener("change", e => {
+    alertsTableState.wiki = e.target.value;
+    alertsTableState.offset = 0;
+    refreshAlertsTable();
+  });
+
+  populateWikiFilter();
+
+  document.getElementById("alerts-prev-page").addEventListener("click", () => {
+    alertsTableState.offset = Math.max(0, alertsTableState.offset - alertsTableState.limit);
+    refreshAlertsTable();
+  });
+  document.getElementById("alerts-next-page").addEventListener("click", () => {
+    alertsTableState.offset += alertsTableState.limit;
+    refreshAlertsTable();
+  });
+
+  // One failed fetch (e.g. a bad query param) must not silently kill every
+  // other panel's update for the rest of the session — log it and keep polling.
+  async function refreshDashboard() {
+    try {
+      const [thresholdRules, windowRules, stats] = await Promise.all([
+        fetch("/threshold-rules").then(r => r.json()),
+        fetch("/window-count-rules").then(r => r.json()),
+        fetch("/stats").then(r => r.json()),
+      ]);
+
+      renderStats(stats);
+      renderThresholdRules(thresholdRules);
+      renderWindowCountRules(windowRules);
+      renderRulesSummary(thresholdRules, windowRules);
+
+      await Promise.all([refreshOverviewAlerts(), refreshAlertsTable()]);
+
+      document.getElementById("status").textContent =
+        `עודכן: ${new Date().toLocaleTimeString("he-IL")}`;
+    } catch (err) {
+      console.error("refreshDashboard failed:", err);
+      document.getElementById("status").textContent = "שגיאה בעדכון — ראה קונסול";
+    }
+  }
+
+  // Hash-based tabs — no router library: the hash is the single source of
+  // truth for which panel shows, so a reload or a shared link lands on the
+  // right tab. All panels still render every poll regardless of visibility,
+  // so switching tabs never waits for a fetch.
+  const TAB_IDS = ["overview", "rules", "alerts"];
+
+  function showTab(tabId) {
+    document.querySelectorAll(".tab-panel").forEach(panel => {
+      panel.hidden = panel.dataset.tab !== tabId;
+    });
+    document.querySelectorAll(".tab-link").forEach(link => {
+      link.classList.toggle("active", link.dataset.tab === tabId);
+    });
+  }
+
+  function currentTabFromHash() {
+    const tab = location.hash.slice(1);
+    return TAB_IDS.includes(tab) ? tab : "overview";
+  }
+
+  window.addEventListener("hashchange", () => showTab(currentTabFromHash()));
+  showTab(currentTabFromHash());
 
   refreshDashboard();
   setInterval(refreshDashboard, REFRESH_MS);
