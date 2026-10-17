@@ -9,13 +9,14 @@ import logging
 import time
 
 from aiokafka import AIOKafkaConsumer
-from redis.asyncio import Redis
 
 from wikiguard_py.consumer.rule_loader import load_evaluators
+from wikiguard_py.consumer.stats import record_event_stats
 from wikiguard_py.domain.models import WikiEditEvent
 from wikiguard_py.persistence.alerts import record_alert
 from wikiguard_py.persistence.database import create_tables
 from wikiguard_py.producer.kafka_publisher import TOPIC
+from wikiguard_py.redis_client import redis_client
 from wikiguard_py.settings import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -34,7 +35,7 @@ async def run() -> None:
         bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id=CONSUMER_GROUP,
     )
-    redis = Redis(host=settings.redis_host, port=settings.redis_port, decode_responses=True)
+    redis = redis_client
 
     evaluators = await load_evaluators(redis)
     last_refresh = time.monotonic()
@@ -47,6 +48,8 @@ async def run() -> None:
                 last_refresh = time.monotonic()
 
             event = WikiEditEvent.model_validate_json(message.value)
+            await record_event_stats(redis, event)
+
             for evaluator in evaluators:
                 if await evaluator.evaluate(event):
                     rule_type = type(evaluator).__name__
