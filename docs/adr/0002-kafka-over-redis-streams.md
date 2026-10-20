@@ -27,6 +27,7 @@ development.
 
 ## Consequences
 Requires running/understanding a real Kafka broker locally (Docker Compose).
-In exchange, the project can genuinely demonstrate partitioning, consumer
-groups, and horizontal consumer scaling — the core interview-relevant skill
-this project exists to build.
+In exchange, the project demonstrates partitioning, consumer groups, and
+horizontal consumer scaling at the infrastructure level — the actual
+mechanics of a distributed log, not just an API that happens to look like
+one.

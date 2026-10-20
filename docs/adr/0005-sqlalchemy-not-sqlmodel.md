@@ -19,11 +19,10 @@ conversion between them.
 - **SQLModel**: a single class serves as both the ORM model and the Pydantic
   schema. Less code, but couples the DB shape to the API shape by
   construction — harder to keep an internal-only DB field out of the API
-  response without extra work. Also a smaller ecosystem/less commonly asked
-  about in interviews than plain SQLAlchemy.
+  response without extra work. Also a smaller, younger ecosystem than plain
+  SQLAlchemy.
 
 ## Consequences
 More boilerplate (two class definitions + a conversion step) in exchange for
 a clean, independently-evolvable boundary between "what's stored" and "what's
-exposed" — and fluency in the ORM most commonly expected in Python backend
-interviews.
+exposed."

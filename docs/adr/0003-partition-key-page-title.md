@@ -10,8 +10,9 @@ Window-Count rule (edit-war detection) counts edits per page within a rolling
 time window, so it depends on seeing that page's edits in the right order.
 
 ## Decision
-`key = page_title`. The topic runs with 3 partitions (enough to demonstrate
-parallel consumption without overhead for a demo project).
+`key = page_title`. The topic runs with 3 partitions — enough for real
+parallel consumption and a meaningful consumer-group rebalance, without the
+operational overhead a much larger partition count would add at this scale.
 
 ## Alternatives considered
 - `event_id`: has no business meaning for routing — using it as the key would
