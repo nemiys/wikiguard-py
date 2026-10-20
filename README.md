@@ -1,5 +1,7 @@
 # wikiguard-py
 
+[![CI](https://github.com/nemiys/wikiguard-py/actions/workflows/ci.yml/badge.svg)](https://github.com/nemiys/wikiguard-py/actions/workflows/ci.yml)
+
 A real-time Wikipedia edit-integrity monitor — watches the live global stream
 of Wikipedia edits, flags suspicious patterns (vandalism, edit wars), and
 exposes both the alerts and the underlying stream's live activity through a
