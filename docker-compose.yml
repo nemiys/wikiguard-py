@@ -10,12 +10,22 @@ services:
       - "5433:5432" # 5432 tied up by wiki-guard (Java) — see docs/adr for the port choice
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wikiguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
     container_name: wikiguard-py-redis
     ports:
       - "6380:6379" # 6379 tied up by wiki-guard (Java)
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   kafka:
     image: apache/kafka:4.2.0
@@ -44,21 +54,66 @@ services:
       # which would silently win any race against our own topic-provisioning code
       # (3 partitions, see ADR-0002) if a producer/consumer touches the topic first.
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      # depends_on without this only waits for the container to *start*, not
+      # for Kafka to actually accept connections — a real cause of producer
+      # crashing instantly on a fresh `up` (see chat, 2026-10-18).
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+      start_period: 20s
 
   consumer:
     build: .
+    image: wikiguard-py:latest
     # No container_name/fixed ports here on purpose — `--scale consumer=N`
     # needs to run several instances of this service, which Docker Compose
     # refuses if the name or a host port is fixed (both must be unique).
     depends_on:
-      - kafka
-      - redis
-      - postgres
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DATABASE_URL: postgresql+asyncpg://wikiguard:wikiguard@postgres:5432/wikiguard
+    restart: unless-stopped
+
+  producer:
+    build: .
+    image: wikiguard-py:latest
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    command: ["uv", "run", "python", "-m", "wikiguard_py.producer.main"]
+    restart: unless-stopped
+
+  api:
+    build: .
+    image: wikiguard-py:latest
+    container_name: wikiguard-py-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: postgresql+asyncpg://wikiguard:wikiguard@postgres:5432/wikiguard
+    # --host 0.0.0.0 is required — uvicorn's default (127.0.0.1) only
+    # listens inside the container itself, unreachable via port mapping.
+    command: ["uv", "run", "uvicorn", "wikiguard_py.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
 
 volumes:
   postgres-data:
