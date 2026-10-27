@@ -28,6 +28,41 @@ CONSUMER_GROUP = "wikiguard-consumers"
 RULE_REFRESH_INTERVAL_SECONDS = 10
 
 
+async def process_message(event: WikiEditEvent, evaluators, redis) -> None:
+    """Runs every active rule against one event and records any alert that
+    fires. Pulled out of run()'s Kafka loop so it can be tested directly,
+    with real evaluators/Redis/Postgres, without running a Kafka consumer."""
+    await record_event_stats(redis, event)
+
+    # Bot edits are routine/automated, not suspicious by nature — they
+    # still count toward stream stats above, just never toward rules.
+    if event.is_bot:
+        return
+
+    for evaluator in evaluators:
+        if await evaluator.evaluate(event):
+            rule_type = type(evaluator).__name__
+            logger.info(
+                "ALERT [%s]: %s changed %d bytes on %s",
+                rule_type,
+                event.user,
+                event.byte_change,
+                event.page_title,
+            )
+            is_window_count = isinstance(evaluator, WindowCountEvaluator)
+            edit_count = evaluator.last_count if is_window_count else None
+            await record_alert(
+                rule_type=rule_type,
+                rule_id=evaluator.rule_id,
+                page_title=event.page_title,
+                wiki=event.wiki,
+                server_name=event.server_name,
+                user=event.user,
+                byte_change=event.byte_change,
+                edit_count=edit_count,
+            )
+
+
 async def run() -> None:
     await create_tables()
 
@@ -49,35 +84,7 @@ async def run() -> None:
                 last_refresh = time.monotonic()
 
             event = WikiEditEvent.model_validate_json(message.value)
-            await record_event_stats(redis, event)
-
-            # Bot edits are routine/automated, not suspicious by nature — they
-            # still count toward stream stats above, just never toward rules.
-            if event.is_bot:
-                continue
-
-            for evaluator in evaluators:
-                if await evaluator.evaluate(event):
-                    rule_type = type(evaluator).__name__
-                    logger.info(
-                        "ALERT [%s]: %s changed %d bytes on %s",
-                        rule_type,
-                        event.user,
-                        event.byte_change,
-                        event.page_title,
-                    )
-                    is_window_count = isinstance(evaluator, WindowCountEvaluator)
-                    edit_count = evaluator.last_count if is_window_count else None
-                    await record_alert(
-                        rule_type=rule_type,
-                        rule_id=evaluator.rule_id,
-                        page_title=event.page_title,
-                        wiki=event.wiki,
-                        server_name=event.server_name,
-                        user=event.user,
-                        byte_change=event.byte_change,
-                        edit_count=edit_count,
-                    )
+            await process_message(event, evaluators, redis)
     finally:
         await consumer.stop()
         await redis.aclose()
