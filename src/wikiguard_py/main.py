@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from wikiguard_py.api.alerts import router as alerts_router
 from wikiguard_py.api.stats import router as stats_router
@@ -25,6 +26,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="wikiguard-py", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.include_router(threshold_rules_router)
 app.include_router(window_count_rules_router)

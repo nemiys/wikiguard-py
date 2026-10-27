@@ -246,6 +246,7 @@
     </div>
   </div>
 
+<script src="/static/dashboard.js"></script>
 <script>
   const REFRESH_MS = 4000;
 
@@ -345,14 +346,9 @@
     wireSaveButtons(container, "/window-count-rules");
   }
 
-  // Severity is a client-side read of byte_change — no backend concept of
-  // "severity" exists, this is purely a display judgment.
-  function severityOf(alert) {
-    const magnitude = Math.abs(alert.byte_change);
-    if (magnitude >= 5000) return "high";
-    if (magnitude >= 500) return "medium";
-    return "low";
-  }
+  // severityOf/pageUrl/relativeTime/exactTime/formatByteChange/
+  // formatChangeColumn/computePagination now live in dashboard.js
+  // (loaded above) so they can be unit-tested with Node.
   const SEVERITY_LABEL = { high: "דחוף", medium: "חשוד", low: "שגרתי" };
 
   // Known rule types get a human description; an unrecognized rule_type
@@ -361,48 +357,6 @@
     ThresholdEvaluator: "שינוי גדול בבת אחת",
     WindowCountEvaluator: "עריכות חוזרות בזמן קצר",
   };
-
-  // Wikimedia page URLs follow /wiki/<title> on the edit's own server_name —
-  // this works for every project (Wikipedia, Wikidata, Wiktionary, ...).
-  function pageUrl(alert) {
-    return `https://${alert.server_name}/wiki/${encodeURIComponent(alert.page_title)}`;
-  }
-
-  // Postgres returns a UTC timestamp with no "Z"/offset suffix — without
-  // it, `new Date(...)` assumes *local* time, which silently shifts every
-  // value by the browser's UTC offset. Appending "Z" fixes that everywhere
-  // a fired_at string gets parsed.
-  function relativeTime(isoString) {
-    const date = new Date(isoString + "Z");
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (seconds < 60) return "לפני רגע";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `לפני ${minutes} דקות`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `לפני ${hours} שעות`;
-    return `לפני ${Math.floor(hours / 24)} ימים`;
-  }
-
-  // Shown alongside the relative text, not just on hover — "when exactly"
-  // matters here (alerts can fire multiple times per second).
-  function exactTime(isoString) {
-    return new Date(isoString + "Z").toLocaleString("he-IL", { dateStyle: "short", timeStyle: "medium" });
-  }
-
-  function formatByteChange(byteChange) {
-    const sign = byteChange > 0 ? "+" : "";
-    return `${sign}${byteChange}`;
-  }
-
-  // Window-Count alerts fire on edit *count*, not edit size — showing the
-  // triggering edit's byte_change there would be meaningless. Threshold
-  // alerts still show the byte change, which is the whole point of that rule.
-  function formatChangeColumn(alert) {
-    if (alert.rule_type === "WindowCountEvaluator" && alert.edit_count != null) {
-      return `${alert.edit_count} עריכות`;
-    }
-    return formatByteChange(alert.byte_change);
-  }
 
   function renderAlerts(alerts, tableId) {
     const tbody = document.querySelector(`#${tableId} tbody`);
@@ -521,12 +475,15 @@
   }
 
   function renderAlertsPagination(total) {
-    const totalPages = Math.max(1, Math.ceil(total / alertsTableState.limit));
-    const currentPage = Math.floor(alertsTableState.offset / alertsTableState.limit) + 1;
+    const { totalPages, currentPage, hasPrev, hasNext } = computePagination(
+      total,
+      alertsTableState.limit,
+      alertsTableState.offset
+    );
     document.getElementById("alerts-page-info").textContent =
       `עמוד ${currentPage} מתוך ${totalPages} (${total} סה״כ)`;
-    document.getElementById("alerts-prev-page").disabled = alertsTableState.offset === 0;
-    document.getElementById("alerts-next-page").disabled = currentPage >= totalPages;
+    document.getElementById("alerts-prev-page").disabled = !hasPrev;
+    document.getElementById("alerts-next-page").disabled = !hasNext;
   }
 
   function updateSortHeaders() {

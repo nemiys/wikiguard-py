@@ -141,6 +141,7 @@ docs/adr/         architecture decision records, one per significant choice
 uv sync
 uv run pytest
 uv run ruff check src tests
+node --test tests_js/*.test.js   # dashboard.js's pure display-logic functions
 ```
 
 ## Development without Docker
