@@ -4,6 +4,7 @@ display state, not a durable business record).
 """
 
 import time
+from typing import cast
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -29,6 +30,20 @@ from wikiguard_py.stream_stats import (
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 TOP_N = 5
+
+
+# redis-py's stubs don't narrow responses to str based on the
+# decode_responses=True the client is actually constructed with — these
+# two casts document that gap once, instead of silencing mypy separately
+# at every call site below.
+async def _zrevrange_str(redis: Redis, key: str, start: int, end: int) -> list[tuple[str, float]]:
+    pairs = await redis.zrevrange(key, start, end, withscores=True)
+    return cast(list[tuple[str, float]], pairs)
+
+
+async def _hgetall_str(redis: Redis, key: str) -> dict[str, str]:
+    data = await redis.hgetall(key)
+    return cast(dict[str, str], data)
 
 
 class WikiActivity(BaseModel):
@@ -83,13 +98,11 @@ async def get_stats(redis: Redis = Depends(get_redis)) -> StreamStats:
 
     top_wikis = [
         WikiActivity(server_name=server_name, event_count=int(count))
-        for server_name, count in await redis.zrevrange(
-            WIKI_COUNTS_KEY, 0, TOP_N - 1, withscores=True
-        )
+        for server_name, count in await _zrevrange_str(redis, WIKI_COUNTS_KEY, 0, TOP_N - 1)
     ]
 
     top_pages = []
-    for member, count in await redis.zrevrange(PAGE_COUNTS_KEY, 0, TOP_N - 1, withscores=True):
+    for member, count in await _zrevrange_str(redis, PAGE_COUNTS_KEY, 0, TOP_N - 1):
         server_name, page_title = member.split(PAGE_COUNT_DELIMITER, 1)
         top_pages.append(
             PageActivity(server_name=server_name, page_title=page_title, event_count=int(count))
@@ -97,9 +110,7 @@ async def get_stats(redis: Redis = Depends(get_redis)) -> StreamStats:
 
     top_editors = [
         EditorActivity(user=user, event_count=int(count))
-        for user, count in await redis.zrevrange(
-            EDITOR_COUNTS_KEY, 0, TOP_N - 1, withscores=True
-        )
+        for user, count in await _zrevrange_str(redis, EDITOR_COUNTS_KEY, 0, TOP_N - 1)
     ]
 
     current_minute = int(now // 60)
@@ -108,7 +119,7 @@ async def get_stats(redis: Redis = Depends(get_redis)) -> StreamStats:
     raw_trend = await redis.mget(trend_keys)
     activity_trend = [int(count) if count else 0 for count in raw_trend]
 
-    biggest_edit_data = await redis.hgetall(BIGGEST_EDIT_KEY)
+    biggest_edit_data = await _hgetall_str(redis, BIGGEST_EDIT_KEY)
     biggest_edit = (
         BiggestEdit(
             page_title=biggest_edit_data["page_title"],

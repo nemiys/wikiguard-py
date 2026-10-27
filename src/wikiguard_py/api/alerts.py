@@ -87,7 +87,11 @@ async def list_alerts(
     order_clause = order_column.asc() if order == "asc" else order_column.desc()
     result = await session.execute(base_query.order_by(order_clause).limit(limit).offset(offset))
 
-    return AlertsPage(items=list(result.scalars()), total=total)
+    # FastAPI's response_model coerces ORM rows to FiredAlertRead at the
+    # HTTP boundary (same as every other list endpoint's bare "-> list[Model]"
+    # return), but AlertsPage.items is a field, not a return type, so mypy
+    # doesn't see that coercion happen.
+    return AlertsPage(items=list(result.scalars()), total=total)  # type: ignore[arg-type]
 
 
 @router.get("/rate", response_model=list[int])
