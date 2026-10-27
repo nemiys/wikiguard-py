@@ -24,3 +24,9 @@ async def test_large_negative_change_fires(make_event):
     evaluator = ThresholdEvaluator(rule_id=1, byte_threshold=500)
     event = make_event(byte_change=-800)
     assert await evaluator.evaluate(event) is True
+
+
+async def test_negative_change_exactly_at_threshold_fires(make_event):
+    evaluator = ThresholdEvaluator(rule_id=1, byte_threshold=500)
+    event = make_event(byte_change=-500)
+    assert await evaluator.evaluate(event) is True

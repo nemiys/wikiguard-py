@@ -53,6 +53,26 @@ async def test_old_edits_fall_out_of_window(redis_client, make_event):
     assert await evaluator.evaluate(new_event) is False
 
 
+async def test_edit_exactly_at_window_edge_still_counts(redis_client, make_event):
+    """zremrangebyscore trims strictly older than the cutoff ("(cutoff" is
+    exclusive) — an edit exactly `window_seconds` old is the oldest one
+    still inside the window, not outside it."""
+    evaluator = WindowCountEvaluator(
+        redis=redis_client, rule_id="test-edge", window_seconds=60, edit_count_threshold=2
+    )
+    base_ts = 1_700_000_000
+    old_event = make_event(
+        page_title="Test Page Edge", event_id="hewiki:1", revision_id=1, timestamp=base_ts
+    )
+    await evaluator.evaluate(old_event)
+
+    edge_event = make_event(
+        page_title="Test Page Edge", event_id="hewiki:2", revision_id=2, timestamp=base_ts + 60
+    )
+    assert await evaluator.evaluate(edge_event) is True
+    assert evaluator.last_count == 2
+
+
 async def test_different_pages_counted_separately(redis_client, make_event):
     """Guards against the wiki-guard bug: a global key without the page in
     it would let unrelated pages share one counter."""
