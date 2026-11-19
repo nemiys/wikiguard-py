@@ -159,6 +159,7 @@ decision that would be expensive to reverse.
 | [0004](docs/adr/0004-sqlalchemy-not-sqlmodel.md) | SQLAlchemy models and separate Pydantic schemas | SQLModel, one class for both |
 | [0005](docs/adr/0005-evaluator-as-object.md) | Each rule type is a class with a shared `evaluate()` method | A value and a function; one function with a branch per rule type |
 | [0006](docs/adr/0006-persistence-schema-per-rule-type.md) | One table per rule type; alerts point to rules without a foreign key | One shared table with nullable columns; a shared registry table |
+| [0007](docs/adr/0007-one-window-count-alert-per-window.md) | One Window-Count alert per page per window, not one per edit | One alert per edit; deduplicating when reading; updating one row |
 
 ## License
 

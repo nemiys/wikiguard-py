@@ -36,6 +36,26 @@ async def test_count_reaches_threshold_fires(redis_client, make_event):
     assert evaluator.last_count == 3
 
 
+async def test_one_burst_raises_one_alert(redis_client, make_event):
+    """An edit war keeps going past the threshold: every edit is counted, but only the
+    one that crosses the threshold fires (ADR-0007)."""
+    evaluator = WindowCountEvaluator(
+        redis=redis_client, rule_id="test-once", window_seconds=60, edit_count_threshold=3
+    )
+    base_ts = 1_700_000_000
+    fired = []
+    for i in range(8):
+        event = make_event(
+            page_title="Test Page Burst",
+            event_id=f"hewiki:{i}",
+            revision_id=i,
+            timestamp=base_ts + i,
+        )
+        fired.append(await evaluator.evaluate(event))
+    assert fired == [False, False, True, False, False, False, False, False]
+    assert evaluator.last_count == 8
+
+
 async def test_old_edits_fall_out_of_window(redis_client, make_event):
     evaluator = WindowCountEvaluator(
         redis=redis_client, rule_id="test-window", window_seconds=60, edit_count_threshold=2

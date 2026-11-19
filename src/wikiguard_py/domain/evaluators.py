@@ -55,4 +55,11 @@ class WindowCountEvaluator:
         count = await self.redis.zcard(key)
         self.last_count = count
 
-        return count >= self.edit_count_threshold
+        if count < self.edit_count_threshold:
+            return False
+        # One alert per page per window (ADR-0007): the rest of the same burst is still
+        # counted, but only the edit that crosses the threshold raises an alert. SET NX
+        # succeeds for exactly one caller until the marker expires.
+        alerted_key = f"rule:{self.rule_id}:{event.page_title}:alerted"
+        first = await self.redis.set(alerted_key, event.event_id, nx=True, ex=self.window_seconds)
+        return bool(first)
