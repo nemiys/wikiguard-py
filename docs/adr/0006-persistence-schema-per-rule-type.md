@@ -1,15 +1,13 @@
-# ADR-0007: One table per rule type; fired_alerts references rules loosely
+# ADR-0006: One table per rule type; fired_alerts references rules loosely
 
 ## Status
 Accepted
 
 ## Context
-Stage 5 needed to persist two structurally different rule types
-(`ThresholdEvaluator`'s single `byte_threshold`; `WindowCountEvaluator`'s
-`window_seconds` + `edit_count_threshold`), plus a permanent record of
-every alert that actually fires. `architecture-plan.md` left the exact
-schema open, naming wiki-guard's single-table-inheritance approach as one
-option to consider changing.
+Rules move from code into Postgres, so two structurally different rule
+types need to be persisted (`ThresholdEvaluator`'s single `byte_threshold`;
+`WindowCountEvaluator`'s `window_seconds` + `edit_count_threshold`), plus a
+permanent record of every alert that actually fires.
 
 ## Decision
 Two decisions, made together:
@@ -22,8 +20,8 @@ Two decisions, made together:
    point at.
 
 ## Alternatives considered
-- **A single shared `alert_rules` table** (wiki-guard's
-  single-table-inheritance approach), with nullable columns per
+- **A single shared `alert_rules` table** (single-table inheritance),
+  with nullable columns per
   rule-type-specific field: simpler to query "all active rules" in one
   statement, but every new rule type means a migration adding more
   nullable columns to a table shared by every existing rule type, and

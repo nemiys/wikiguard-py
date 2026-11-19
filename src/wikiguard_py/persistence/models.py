@@ -1,8 +1,8 @@
-"""SQLAlchemy models — the DB-side shape of things (see ADR-0005: kept
+"""SQLAlchemy models — the DB-side shape of things (see ADR-0004: kept
 separate from the Pydantic schemas the API exposes).
 
 One table per rule type (not one shared table with nullable columns) — same
-reasoning as ADR-0006: each rule type owns its own data, and adding a new
+reasoning as ADR-0005: each rule type owns its own data, and adding a new
 rule type later shouldn't touch existing tables at all.
 """
 
@@ -34,10 +34,10 @@ class WindowCountRuleModel(Base):
 
 
 class FiredAlertModel(Base):
-    """One row per alert that actually fired — never one row per raw event
-    (see architecture-plan.md principle #5). rule_type + rule_id point at a
-    row in whichever rules table fired this, with no DB-enforced foreign
-    key — a deliberate, agreed simplification (see chat).
+    """One row per alert that actually fired — never one row per raw event.
+    rule_type + rule_id point at a row in whichever rules table fired this,
+    with no DB-enforced foreign key — a deliberate simplification (see
+    ADR-0006).
 
     wiki/user/byte_change are remembered from the WikiEditEvent that
     triggered the alert — still not the full raw event, just enough context

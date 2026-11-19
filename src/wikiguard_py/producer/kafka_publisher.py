@@ -1,6 +1,6 @@
 """Publishes normalized WikiEditEvents to Kafka.
 
-key = page_title (routing only, for per-page ordering — see ADR-0003).
+key = page_title (routing only, for per-page ordering — see ADR-0002).
 value = the full WikiEditEvent, self-contained.
 """
 

@@ -74,8 +74,8 @@ async def test_edit_exactly_at_window_edge_still_counts(redis_client, make_event
 
 
 async def test_different_pages_counted_separately(redis_client, make_event):
-    """Guards against the wiki-guard bug: a global key without the page in
-    it would let unrelated pages share one counter."""
+    """A global key without the page in it would let unrelated pages share
+    one counter."""
     evaluator = WindowCountEvaluator(
         redis=redis_client, rule_id="test-scope", window_seconds=60, edit_count_threshold=2
     )

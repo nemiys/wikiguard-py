@@ -1,4 +1,4 @@
-# ADR-0003: Kafka partition key = page_title
+# ADR-0002: Kafka partition key = page_title
 
 ## Status
 Accepted
@@ -18,15 +18,19 @@ operational overhead a much larger partition count would add at this scale.
 - `event_id`: has no business meaning for routing — using it as the key would
   scatter one page's edits across partitions essentially at random, breaking
   the ordering guarantee the Window-Count rule needs. `event_id`'s only job
-  is deduplication (see ADR-0004); it plays no role in partitioning.
+  is deduplication (see ADR-0003); it plays no role in partitioning.
 - `user`: would be the right key for a *per-user* pattern (e.g. "same user
   vandalizing many pages"), not the current per-page scope. Not chosen
   because no such rule exists yet — see Consequences.
 
 ## Consequences
-All edits to the same page are guaranteed to be processed in order by a
-single consumer. A future per-user rule does not require touching Kafka at
-all — it is implemented as a new evaluator in the consumer, keyed by `user`
-in Redis instead of `page`; Kafka ordering is not required for that rule's
-correctness because the sliding-window computation in Redis is timestamp-
-based, not arrival-order-based.
+All edits to the same page are processed in order by a single consumer.
+This is what keeps the Window-Count rule correct with several consumers:
+its Redis update is three separate commands (add, trim, count), not one
+atomic operation, and because one page's edits never reach two consumers,
+two consumers never update the same page's window at the same time.
+
+A future per-user rule does not get this guarantee. One user edits many
+pages, so their edits land on different partitions and reach different
+consumers. That rule needs its Redis update to be atomic (a Lua script or a
+`MULTI` transaction), or its own topic keyed by `user`.

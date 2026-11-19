@@ -2,8 +2,8 @@
 
 Paginated, sorted, and filtered server-side (not a bare unbounded list):
 fired_alerts grows without bound as the consumer runs, so returning the
-whole table on every poll doesn't scale — see chat for the 3.1MB/request
-measurement that surfaced this.
+whole table on every poll doesn't scale (an early unpaginated version
+measured 3.1 MB per request).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -104,7 +104,7 @@ async def alert_rate(
     with a single grouped SQL query, not by fetching rows and counting them
     client-side. Fetching rows for this breaks down once volume is high: a
     row-limited fetch's "200 most recent" can all land in the last minute,
-    making every other bucket read zero (see chat)."""
+    making every other bucket read zero."""
     now = datetime.now(UTC).replace(tzinfo=None)
     window_start = now - timedelta(minutes=minutes)
     bucket_seconds = (minutes * 60) / buckets

@@ -19,7 +19,7 @@ STREAM_URL = "https://stream.wikimedia.org/v2/stream/recentchange"
 # Wikimedia's User-Agent policy (meta.wikimedia.org/wiki/User-Agent_policy)
 # rejects requests without an identifying User-Agent — the default httpx one
 # gets a 403.
-USER_AGENT = "wikiguard-py/0.1 (educational portfolio project; Handson Backend Bootcamp)"
+USER_AGENT = "wikiguard-py/0.1 (portfolio project; https://github.com/nemiys/wikiguard-py)"
 
 INITIAL_BACKOFF_SECONDS = 2
 MAX_BACKOFF_SECONDS = 30

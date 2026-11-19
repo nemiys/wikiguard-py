@@ -1,5 +1,5 @@
-"""FastAPI application entrypoint — rules CRUD + alert history (Stage 6),
-dashboard (Stage 7)."""
+"""FastAPI application entrypoint — rules CRUD, alert history, live stats and
+the dashboard."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path

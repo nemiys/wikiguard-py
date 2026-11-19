@@ -1,4 +1,4 @@
-# ADR-0005: SQLAlchemy 2.0 async + separate Pydantic schemas, not SQLModel
+# ADR-0004: SQLAlchemy 2.0 async + separate Pydantic schemas, not SQLModel
 
 ## Status
 Accepted

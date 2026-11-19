@@ -7,12 +7,11 @@ of Wikipedia edits, flags suspicious patterns (vandalism, edit wars), and
 exposes both the alerts and the underlying stream's live activity through a
 dashboard.
 
-Built from first principles as a learning project centered on **Kafka as a
-high-throughput streaming pipeline** — a deliberate choice to practice
-message-queue architecture, not a side effect of the tech already being in
-some other stack. Every architectural decision (Kafka vs. Redis Streams,
-partition-key choice, idempotent event IDs, ORM boundaries, ...) is recorded
-as it was made — see [`docs/adr/`](docs/adr/).
+The pipeline is built around **Kafka**: reading the stream and analyzing it
+are separate processes, the analysis scales horizontally, and partitioning
+keeps each page's edits in order. Every significant decision (Kafka vs.
+Redis Streams, the partition key, idempotent event IDs, ORM boundaries, ...)
+is recorded as it was made — see [Design decisions](#design-decisions).
 
 ![Dashboard overview](docs/screenshots/overview.png)
 
@@ -62,30 +61,21 @@ Wikipedia broadcasts every edit across every language edition in real time
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    wm([Wikimedia EventStreams]) -->|SSE| producer[Producer: normalize + filter]
+    producer -->|key = page_title| kafka[[Kafka: wiki-edit-events, 3 partitions]]
+    kafka -->|consumer group| consumer[Consumer: rule engine]
+    pg[(Postgres: rules, alerts)] -->|rules, reloaded every ~10s| consumer
+    consumer <-->|Window-Count state| redis[(Redis)]
+    consumer -->|live stats| redis
+    consumer -->|rule violated| pg
+    pg -->|rules, alerts| api[FastAPI]
+    redis -->|live stats| api
+    api -->|JSON, polled every 4s| dash([Dashboard])
 ```
-Wikimedia EventStreams (public, live)
-        │  SSE
-        ▼
-[Producer] ── normalizes + filters (structural only, no business logic)
-        │
-        ▼
-Kafka topic "wiki-edit-events" (3 partitions, keyed by page_title —
-guarantees per-page edit ordering, required for Window-Count)
-        │
-        ▼
-[Consumer] ── loads rules from Postgres, re-checks every ~10s
-        ├─ Threshold rule: pure in-memory check
-        └─ Window-Count rule: Redis sorted set (sliding window)
-        │
-        ├─▶ rule violated → Postgres (fired_alerts) — durable record
-        └─▶ every event  → Redis (stream stats) — ephemeral, for live display
-        ▼
-[FastAPI] ── Postgres for alerts/rules (source of truth),
-             Redis directly for live stats (explicitly not durable —
-             see docs/adr and the API's own docstrings)
-        ▼
-[Dashboard] ── single HTML+JS page, no build step/framework, polls every 4s
-```
+
+Arrows show the direction data flows.
 
 Kafka's role is deliberate, not incidental: it decouples the producer from
 the consumer entirely (one can restart without the other losing data),
@@ -98,22 +88,21 @@ rule correct under concurrent load.
 
 | Layer | Technology | Why |
 |---|---|---|
-| Streaming | Kafka (`aiokafka`) | The core learning subject — producer/consumer decoupling, partitioning, consumer groups |
+| Streaming | Kafka (`aiokafka`) | Decouples reading the stream from analyzing it; partitioning and consumer groups for horizontal scale |
 | Sliding-window state | Redis (`redis.asyncio`) | Transient per-rule state (Window-Count) and live stream stats — never the durable record |
 | Persistence | Postgres + SQLAlchemy 2.0 (async) | Durable business state: rule definitions, fired alerts |
 | API | FastAPI | Async REST API, rules CRUD + alert history + live stats |
 | Validation | Pydantic v2 | Runtime validation of untrusted external data (the raw Wikimedia stream) |
 | Dashboard | Plain HTML/CSS/JS | No framework, no build step — served directly by FastAPI |
-| Tooling | `uv`, `ruff`, `pytest` | Dependency management, linting, testing |
+| Tooling | `uv`, `ruff`, `mypy`, `pytest`, `node:test`, GitHub Actions | Dependencies, linting, type checking, Python and dashboard tests, CI on every push |
 
 ## Features
 
 - **Live stream statistics**, independent of alerts — throughput, bot/human
   ratio, most active wikis/pages/editors, a 30-minute activity trend.
 - **Full alert history** — server-side sorting (click a column header),
-  filtering (severity, rule type, specific wiki), and pagination. Built
-  after discovering the naive version returned the entire table unbounded
-  (3.1MB per request) — see `docs/adr`/commit history for the fix.
+  filtering (severity, rule type, specific wiki), and pagination — added
+  after measuring the first, unpaginated version at 3.1 MB per request.
 - **Live rule editing** — thresholds are adjustable from the dashboard
   itself and take effect within ~10 seconds, no restart.
 - **Horizontal scale demo** — `docker compose up --scale consumer=3` and
@@ -158,7 +147,19 @@ uv run python -m wikiguard_py.producer.main
 
 ## Design decisions
 
-Significant architectural choices are recorded as they were made in
-[`docs/adr/`](docs/adr/) — what was decided, what alternatives were
-considered, and why. Not a changelog: each ADR documents one decision that
-would be hard or expensive to reverse later.
+Each significant choice is recorded in [`docs/adr/`](docs/adr/) as it was
+made: what was decided, what else was considered, and why. One record per
+decision that would be expensive to reverse.
+
+| ADR | Decision | Rejected alternatives |
+|---|---|---|
+| [0001](docs/adr/0001-kafka-over-redis-streams.md) | Kafka between reading the stream and analyzing it | Redis Streams; an in-process `asyncio.Queue` |
+| [0002](docs/adr/0002-partition-key-page-title.md) | Partition key is the page title, so each page's edits stay in order on one consumer | `event_id`; the editing user |
+| [0003](docs/adr/0003-deterministic-event-id.md) | Event ID is `{wiki}:{revision_id}`, the same on every retry | A random UUID; `revision_id` alone |
+| [0004](docs/adr/0004-sqlalchemy-not-sqlmodel.md) | SQLAlchemy models and separate Pydantic schemas | SQLModel, one class for both |
+| [0005](docs/adr/0005-evaluator-as-object.md) | Each rule type is a class with a shared `evaluate()` method | A value and a function; one function with a branch per rule type |
+| [0006](docs/adr/0006-persistence-schema-per-rule-type.md) | One table per rule type; alerts point to rules without a foreign key | One shared table with nullable columns; a shared registry table |
+
+## License
+
+[MIT](LICENSE)

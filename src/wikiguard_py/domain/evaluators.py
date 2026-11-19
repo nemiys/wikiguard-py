@@ -1,11 +1,10 @@
 """Rule evaluators — decision logic behind a shared evaluate() interface.
 
-A "rule" here is not yet the Postgres-backed AlertRule from Stage 5 — that
-model doesn't exist yet. This is the minimal shape each evaluator needs to
-make a decision, decoupled from how rules are eventually stored.
+Evaluators hold only what they need to make a decision, decoupled from how
+rules are stored in Postgres.
 
 evaluate() is async on every evaluator, even ones (like ThresholdEvaluator)
-that never actually await anything — see ADR-0006: the consumer holds a
+that never actually await anything — see ADR-0005: the consumer holds a
 mixed list of evaluator types and calls them identically, so the interface
 has to be uniform even where a given implementation doesn't need it.
 """
@@ -30,8 +29,7 @@ class WindowCountEvaluator:
     memory across events, kept in Redis. The key is scoped by rule_id AND
     page, never rule_id alone — a global, page-less key would share one
     counter across all of Wikipedia and trip constantly under real edit
-    volume (the documented bug in wiki-guard's SlidingWindowService that
-    this avoids).
+    volume.
     """
 
     def __init__(

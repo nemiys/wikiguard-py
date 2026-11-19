@@ -1,7 +1,7 @@
 """Core domain data — the normalized shape of a single Wikipedia edit.
 
-This model is produced by the Producer (Stage 2) and consumed by the
-Consumer/Rule Engine (Stage 3+). It carries no business logic itself —
+This model is produced by the producer and consumed by the consumer's rule
+engine. It carries no business logic itself —
 just the facts about one edit.
 """
 

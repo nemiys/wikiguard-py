@@ -1,14 +1,14 @@
-# ADR-0006: Rule evaluators are objects with a shared `evaluate()` interface, not a value + function
+# ADR-0005: Rule evaluators are objects with a shared `evaluate()` interface, not a value + function
 
 ## Status
 Accepted
 
 ## Context
-`ThresholdEvaluator` (Stage 1) decides whether a single edit's byte-change
-crosses a configured threshold. Stage 4 will add `WindowCountEvaluator` — a
-second rule type that decides whether a page has been edited too many times
-within a time window, backed by Redis. Both rule types will eventually run
-inside the same consumer loop (Stage 3+), which needs to check every active
+`ThresholdEvaluator` decides whether a single edit's byte-change crosses a
+configured threshold. A second rule type, `WindowCountEvaluator`, is planned:
+it decides whether a page has been edited too many times within a time
+window, backed by Redis. Both rule types will run inside the same consumer
+loop, which needs to check every active
 rule against every incoming event without knowing, ahead of time, how many
 rule types exist or what data each one needs internally.
 
@@ -32,11 +32,11 @@ a specific rule type reaches its answer internally.
   ...`): keeps a single entry point, but means every new rule type requires
   editing that shared function, and mixes each rule type's internal logic
   into one place instead of keeping them independent and independently
-  testable (as Stage 1's evaluator tests already are).
+  testable (as the threshold evaluator's tests already are).
 
 ## Consequences
-Adding a new rule type (Window-Count in Stage 4, and any future rule) means
-writing a new class in `domain/evaluators.py` with an `evaluate(event) ->
-bool` method — the consumer loop (`consumer/main.py`) does not change at
-all. Stage 5's dynamic rule loading from Postgres can build a mixed list of
+Adding a new rule type (Window-Count, and any future rule) means writing a
+new class in `domain/evaluators.py` with an `evaluate(event) -> bool`
+method — the consumer loop (`consumer/main.py`) does not change at all.
+Loading rules dynamically from Postgres can build a mixed list of
 different evaluator objects and treat them uniformly, regardless of type.

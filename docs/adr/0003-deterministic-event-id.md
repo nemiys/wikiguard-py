@@ -1,11 +1,11 @@
-# ADR-0004: event_id = "{wiki}:{revision_id}", not a random UUID
+# ADR-0003: event_id = "{wiki}:{revision_id}", not a random UUID
 
 ## Status
 Accepted
 
 ## Context
 Each event needs a unique identifier, independent of its Kafka partition key
-(see ADR-0003). Wikimedia's EventStreams feed is global — it interleaves
+(see ADR-0002). Wikimedia's EventStreams feed is global — it interleaves
 every Wikimedia project (enwiki, hewiki, wikidata, commons, ...) on one
 connection. MediaWiki's own `revision_id` is only unique *within* a single
 wiki, not across the whole feed.

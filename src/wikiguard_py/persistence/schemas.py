@@ -1,4 +1,4 @@
-"""Pydantic schemas — the public shape exposed over HTTP (see ADR-0005).
+"""Pydantic schemas — the public shape exposed over HTTP (see ADR-0004).
 
 Separate from the SQLAlchemy models in models.py on purpose: these control
 exactly what a client can send in and what they get back, independent of

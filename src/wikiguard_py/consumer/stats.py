@@ -54,7 +54,7 @@ async def record_event_stats(redis, event: WikiEditEvent) -> None:
     await redis.expire(minute_key, TREND_WINDOW_MINUTES * 60 + 60)
 
     # Simple read-then-write "keep the bigger one" — not atomic, so two
-    # consumer replicas (Stage 8) could theoretically race. Acceptable for a
+    # consumer replicas could theoretically race. Acceptable for a
     # display-only "fun fact": a wrong value self-corrects on the next
     # bigger edit, and this is never read for a business decision.
     current_biggest = await redis.hget(BIGGEST_EDIT_KEY, "byte_change")

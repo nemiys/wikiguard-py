@@ -1,9 +1,8 @@
 """Centralized configuration.
 
-Defaults match what every module hardcoded so far (localhost + the
-host-mapped Docker ports) — nothing changes for a normal local run. Values
-become overridable via environment variables, needed once a service runs
-*inside* a container (Stage 8): there, "localhost:9094" reaches nothing —
+Defaults target a local run (localhost + the host-mapped Docker ports).
+Every value is overridable via environment variables, which is needed when
+a service runs *inside* a container: there, "localhost:9094" reaches nothing —
 the right address is the service name on its internal port (kafka:9092).
 """
 
