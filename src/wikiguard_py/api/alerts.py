@@ -21,6 +21,8 @@ from wikiguard_py.persistence.schemas import FiredAlertRead
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 MAX_LIMIT = 200
+# A year. Without a bound, a huge value overflows timedelta and answers 500.
+MAX_SINCE_MINUTES = 60 * 24 * 365
 
 SortColumn = Literal["fired_at", "byte_change", "rule_type", "wiki", "user"]
 SeverityLevel = Literal["low", "medium", "high"]
@@ -57,7 +59,7 @@ async def list_alerts(
     rule_type: str | None = None,
     wiki: str | None = None,
     severity: SeverityLevel | None = None,
-    since_minutes: int | None = None,
+    since_minutes: int | None = Query(default=None, gt=0, le=MAX_SINCE_MINUTES),
     limit: int = Query(default=50, gt=0, le=MAX_LIMIT),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),

@@ -9,6 +9,7 @@ import logging
 import time
 
 from aiokafka import AIOKafkaConsumer
+from pydantic import ValidationError
 
 from wikiguard_py.consumer.rule_loader import load_evaluators
 from wikiguard_py.consumer.stats import record_event_stats
@@ -26,6 +27,17 @@ logger = logging.getLogger(__name__)
 CONSUMER_GROUP = "wikiguard-consumers"
 
 RULE_REFRESH_INTERVAL_SECONDS = 10
+
+
+def parse_message(value: bytes) -> WikiEditEvent | None:
+    """One message off the topic, or None if it is not a valid event. A bad message is
+    logged and skipped: raising here would stop the consumer, and on restart it would read
+    the same message again, a crash loop on one message."""
+    try:
+        return WikiEditEvent.model_validate_json(value)
+    except ValidationError:
+        logger.warning("Skipping a message that is not a valid WikiEditEvent: %r", value[:200])
+        return None
 
 
 async def process_message(event: WikiEditEvent, evaluators, redis) -> None:
@@ -83,8 +95,9 @@ async def run() -> None:
                 evaluators = await load_evaluators(redis)
                 last_refresh = time.monotonic()
 
-            event = WikiEditEvent.model_validate_json(message.value)
-            await process_message(event, evaluators, redis)
+            event = parse_message(message.value)
+            if event is not None:
+                await process_message(event, evaluators, redis)
     finally:
         await consumer.stop()
         await redis.aclose()

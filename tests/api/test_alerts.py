@@ -310,3 +310,9 @@ async def test_combination_filter_and_pagination(client, make_alert):
     body = response.json()
     assert len(body["items"]) == 2
     assert body["total"] == 4
+
+
+async def test_since_minutes_out_of_range_is_a_422_not_a_500(client):
+    for value in (0, -5, 100_000_000_000):
+        response = await client.get(f"/alerts?since_minutes={value}")
+        assert response.status_code == 422

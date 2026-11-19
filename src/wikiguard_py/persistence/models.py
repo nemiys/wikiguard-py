@@ -6,12 +6,18 @@ reasoning as ADR-0005: each rule type owns its own data, and adding a new
 rule type later shouldn't touch existing tables at all.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from wikiguard_py.persistence.database import Base
+
+
+def utc_now() -> datetime:
+    """Naive UTC, set by the application. The timestamp columns have no timezone and every
+    reader treats them as UTC; Postgres now() would store the server's local time instead."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class ThresholdRuleModel(Base):
@@ -20,7 +26,7 @@ class ThresholdRuleModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     byte_threshold: Mapped[int]
     is_active: Mapped[bool] = mapped_column(default=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(default=utc_now, server_default=func.now())
 
 
 class WindowCountRuleModel(Base):
@@ -30,7 +36,7 @@ class WindowCountRuleModel(Base):
     window_seconds: Mapped[int]
     edit_count_threshold: Mapped[int]
     is_active: Mapped[bool] = mapped_column(default=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(default=utc_now, server_default=func.now())
 
 
 class FiredAlertModel(Base):
@@ -54,4 +60,4 @@ class FiredAlertModel(Base):
     user: Mapped[str]
     byte_change: Mapped[int]
     edit_count: Mapped[int | None]
-    fired_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    fired_at: Mapped[datetime] = mapped_column(default=utc_now, server_default=func.now())

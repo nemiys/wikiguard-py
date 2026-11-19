@@ -9,7 +9,7 @@ import pytest
 from redis.asyncio import Redis
 from sqlalchemy import delete, select
 
-from wikiguard_py.consumer.main import process_message
+from wikiguard_py.consumer.main import parse_message, process_message
 from wikiguard_py.domain.evaluators import ThresholdEvaluator, WindowCountEvaluator
 from wikiguard_py.domain.models import WikiEditEvent
 from wikiguard_py.persistence.database import async_session_factory
@@ -50,6 +50,9 @@ async def redis_client():
     for key in keys:
         await client.delete(key)
     async for key in client.scan_iter(f"{TREND_BUCKET_PREFIX}:*"):
+        await client.delete(key)
+    # Window-Count state (the window and the alerted marker), so a rerun starts clean.
+    async for key in client.scan_iter("rule:*"):
         await client.delete(key)
     await client.aclose()
 
@@ -149,3 +152,13 @@ async def test_every_processed_event_increments_total_events(redis_client):
     await process_message(make_event(), [], redis_client)
     after = int(await redis_client.get(TOTAL_EVENTS_KEY) or 0)
     assert after - before >= 1
+
+
+def test_parse_message_reads_a_valid_event():
+    event = make_event()
+    assert parse_message(event.model_dump_json().encode()) == event
+
+
+@pytest.mark.parametrize("value", [b"not json", b'{"event_id": "x"}', b""])
+def test_parse_message_skips_an_invalid_message_instead_of_raising(value):
+    assert parse_message(value) is None

@@ -7,6 +7,9 @@ See normalizer.py for what happens to each raw payload next.
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from httpx_sse import aconnect_sse
@@ -25,23 +28,40 @@ INITIAL_BACKOFF_SECONDS = 2
 MAX_BACKOFF_SECONDS = 30
 
 
-async def stream_recentchanges():
+@dataclass
+class StreamPosition:
+    """The id of the last event received. EventStreams resumes from it when a reconnect
+    sends it back as Last-Event-ID, so a dropped connection loses no edits."""
+
+    last_event_id: str | None = None
+
+
+async def stream_recentchanges(
+    position: StreamPosition, transport: httpx.AsyncBaseTransport | None = None
+) -> AsyncIterator[dict[str, Any]]:
     headers = {"User-Agent": USER_AGENT}
-    async with httpx.AsyncClient(timeout=None, headers=headers) as client:
+    if position.last_event_id:
+        headers["Last-Event-ID"] = position.last_event_id
+    async with httpx.AsyncClient(timeout=None, headers=headers, transport=transport) as client:
         async with aconnect_sse(client, "GET", STREAM_URL) as event_source:
             async for sse in event_source.aiter_sse():
+                if sse.id:
+                    position.last_event_id = sse.id
                 if not sse.data:
                     continue
                 yield json.loads(sse.data)
 
 
-async def stream_recentchanges_with_retry():
+async def stream_recentchanges_with_retry(
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> AsyncIterator[dict[str, Any]]:
     """Like stream_recentchanges, but reconnects with exponential backoff
-    instead of dying the moment the connection drops."""
+    instead of dying the moment the connection drops, and resumes where it stopped."""
+    position = StreamPosition()
     backoff = INITIAL_BACKOFF_SECONDS
     while True:
         try:
-            async for raw_event in stream_recentchanges():
+            async for raw_event in stream_recentchanges(position, transport):
                 backoff = INITIAL_BACKOFF_SECONDS
                 yield raw_event
         except Exception as exc:
