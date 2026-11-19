@@ -10,3 +10,4 @@ build/
 postgresdata/
 docs/architecture-plan.md
 .claude/
+CLAUDE.md
