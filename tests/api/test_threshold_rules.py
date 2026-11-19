@@ -62,9 +62,7 @@ async def test_get_by_id_404_when_missing(client):
 
 async def test_update_partial_field_only_changes_that_field(client):
     created = (await create_rule(client, byte_threshold=500, is_active=True)).json()
-    response = await client.patch(
-        f"/threshold-rules/{created['id']}", json={"byte_threshold": 900}
-    )
+    response = await client.patch(f"/threshold-rules/{created['id']}", json={"byte_threshold": 900})
     assert response.status_code == 200
     body = response.json()
     assert body["byte_threshold"] == 900
@@ -101,3 +99,23 @@ async def test_delete_404_when_missing(client):
     response = await client.delete("/threshold-rules/999999")
     assert response.status_code == 404
     assert response.json()["detail"] == "Threshold rule not found"
+
+
+async def test_create_refuses_a_threshold_of_zero_or_less(client):
+    for value in (0, -5):
+        response = await create_rule(client, byte_threshold=value)
+        assert response.status_code == 422
+
+
+async def test_patch_refuses_an_explicit_null(client):
+    created = (await create_rule(client, byte_threshold=500)).json()
+    response = await client.patch(
+        f"/threshold-rules/{created['id']}", json={"byte_threshold": None}
+    )
+    assert response.status_code == 422
+
+
+async def test_patch_refuses_a_threshold_of_zero(client):
+    created = (await create_rule(client, byte_threshold=500)).json()
+    response = await client.patch(f"/threshold-rules/{created['id']}", json={"byte_threshold": 0})
+    assert response.status_code == 422

@@ -6,17 +6,33 @@ how a row is actually stored.
 """
 
 from datetime import datetime
+from typing import Annotated, Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# A rule with a threshold or window of 0 fires on every edit or never fires at all.
+Positive = Annotated[int, Field(gt=0)]
+
+
+class RuleUpdate(BaseModel):
+    """PATCH semantics: a field may be left out, but not set to null (the columns are NOT
+    NULL; without this check an explicit null reaches the database and fails as a 500)."""
+
+    @model_validator(mode="after")
+    def _reject_explicit_nulls(self) -> Self:
+        nulls = sorted(name for name in self.model_fields_set if getattr(self, name) is None)
+        if nulls:
+            raise ValueError(f"{', '.join(nulls)} cannot be null")
+        return self
 
 
 class ThresholdRuleCreate(BaseModel):
-    byte_threshold: int
+    byte_threshold: Positive
     is_active: bool = True
 
 
-class ThresholdRuleUpdate(BaseModel):
-    byte_threshold: int | None = None
+class ThresholdRuleUpdate(RuleUpdate):
+    byte_threshold: Positive | None = None
     is_active: bool | None = None
 
 
@@ -30,14 +46,14 @@ class ThresholdRuleRead(BaseModel):
 
 
 class WindowCountRuleCreate(BaseModel):
-    window_seconds: int
-    edit_count_threshold: int
+    window_seconds: Positive
+    edit_count_threshold: Positive
     is_active: bool = True
 
 
-class WindowCountRuleUpdate(BaseModel):
-    window_seconds: int | None = None
-    edit_count_threshold: int | None = None
+class WindowCountRuleUpdate(RuleUpdate):
+    window_seconds: Positive | None = None
+    edit_count_threshold: Positive | None = None
     is_active: bool | None = None
 
 

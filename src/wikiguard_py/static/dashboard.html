@@ -272,11 +272,24 @@
             input.type === "checkbox" ? input.checked : Number(input.value);
         });
 
-        await fetch(`${endpointPrefix}/${card.dataset.id}`, {
+        const response = await fetch(`${endpointPrefix}/${card.dataset.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+        // Shown inside the card, not in the shared status line, which the next poll rewrites.
+        let error = card.querySelector(".save-error");
+        if (!error) {
+          error = document.createElement("p");
+          error.className = "caption save-error";
+          card.append(error);
+        }
+        if (!response.ok) {
+          // The server refuses 0, negatives and empty fields; the rule keeps its old values.
+          error.textContent = "הערך לא נשמר: כל מספר בכלל חייב להיות גדול מאפס";
+          return;
+        }
+        error.textContent = "";
         refreshDashboard();
       });
     });
@@ -367,13 +380,13 @@
     tbody.innerHTML = alerts.map(a => {
       const sev = severityOf(a);
       return `
-        <tr class="sev-${sev}" title="user: ${a.user}, rule_id: ${a.rule_id}">
+        <tr class="sev-${sev}" title="user: ${escapeHtml(a.user)}, rule_id: ${a.rule_id}">
           <td><span class="badge sev-${sev}">${SEVERITY_LABEL[sev]}</span></td>
-          <td>${RULE_LABEL[a.rule_type] ?? a.rule_type}</td>
-          <td>${formatChangeColumn(a)}</td>
+          <td>${escapeHtml(RULE_LABEL[a.rule_type] ?? a.rule_type)}</td>
+          <td>${escapeHtml(formatChangeColumn(a))}</td>
           <td>
-            <a href="${pageUrl(a)}" target="_blank" rel="noopener">${a.page_title}</a>
-            <div class="caption">${a.server_name}</div>
+            <a href="${escapeHtml(pageUrl(a))}" target="_blank" rel="noopener">${escapeHtml(a.page_title)}</a>
+            <div class="caption">${escapeHtml(a.server_name)}</div>
           </td>
           <td>
             ${relativeTime(a.fired_at)}
@@ -403,7 +416,7 @@
     const max = Math.max(...items.map(i => i.event_count));
     container.innerHTML = items.map(item => `
       <div class="bar-item">
-        <div class="bar-item-label"><span>${labelFn(item)}</span><span>${item.event_count}</span></div>
+        <div class="bar-item-label"><span>${escapeHtml(labelFn(item))}</span><span>${item.event_count}</span></div>
         <div class="bar-track"><div class="bar-fill" style="width: ${(item.event_count / max) * 100}%"></div></div>
       </div>`).join("");
   }
@@ -435,8 +448,9 @@
     if (stats.biggest_edit) {
       const be = stats.biggest_edit;
       biggestEditEl.innerHTML =
-        `השיא: <b>${be.user}</b> שינה <b>${formatByteChange(be.byte_change)}</b> בייטים ב-` +
-        `<a href="${pageUrl(be)}" target="_blank" rel="noopener">${be.page_title}</a> · ${be.server_name}`;
+        `השיא: <b>${escapeHtml(be.user)}</b> שינה <b>${formatByteChange(be.byte_change)}</b> בייטים ב-` +
+        `<a href="${escapeHtml(pageUrl(be))}" target="_blank" rel="noopener">${escapeHtml(be.page_title)}</a>` +
+        ` · ${escapeHtml(be.server_name)}`;
     } else {
       biggestEditEl.textContent = "";
     }

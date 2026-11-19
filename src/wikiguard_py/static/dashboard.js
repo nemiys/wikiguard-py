@@ -4,6 +4,17 @@
 // dashboard's own inline <script>, so these stay ordinary globals there —
 // the module.exports guard below only matters when Node requires this file.
 
+// Page titles, usernames and wiki names come from the public edit stream, so anyone can
+// choose them. Every such value is escaped before it goes into innerHTML.
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 // Severity is a client-side read of byte_change — no backend concept of
 // "severity" exists, this is purely a display judgment.
 function severityOf(alert) {
@@ -75,6 +86,7 @@ function computePagination(total, limit, offset) {
 
 if (typeof module !== "undefined") {
   module.exports = {
+    escapeHtml,
     severityOf,
     pageUrl,
     relativeTime,

@@ -2,6 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  escapeHtml,
   severityOf,
   pageUrl,
   relativeTime,
@@ -160,4 +161,23 @@ test("computePagination: empty table still reports a single page", () => {
 test("computePagination: total not evenly divisible by limit rounds the page count up", () => {
   const { totalPages } = computePagination(25, 10, 0);
   assert.equal(totalPages, 3);
+});
+
+// ---- escapeHtml -------------------------------------------------------
+
+test("escapeHtml: a username cannot close an attribute or open a tag", () => {
+  assert.equal(
+    escapeHtml(`x" onmouseover="alert(1)`),
+    "x&quot; onmouseover=&quot;alert(1)"
+  );
+  assert.equal(escapeHtml("<img src=x>"), "&lt;img src=x&gt;");
+});
+
+test("escapeHtml: ampersands and single quotes are escaped too", () => {
+  assert.equal(escapeHtml("Tom & Jerry's"), "Tom &amp; Jerry&#39;s");
+});
+
+test("escapeHtml: plain text and Hebrew pass through unchanged", () => {
+  assert.equal(escapeHtml("עמוד ראשי"), "עמוד ראשי");
+  assert.equal(escapeHtml(42), "42");
 });

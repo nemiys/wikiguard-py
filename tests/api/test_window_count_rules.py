@@ -99,9 +99,7 @@ async def test_update_empty_body_changes_nothing(client):
 
 
 async def test_update_404_when_missing(client):
-    response = await client.patch(
-        "/window-count-rules/999999", json={"edit_count_threshold": 1}
-    )
+    response = await client.patch("/window-count-rules/999999", json={"edit_count_threshold": 1})
     assert response.status_code == 404
     assert response.json()["detail"] == "Window-count rule not found"
 
@@ -123,3 +121,24 @@ async def test_delete_404_when_missing(client):
     response = await client.delete("/window-count-rules/999999")
     assert response.status_code == 404
     assert response.json()["detail"] == "Window-count rule not found"
+
+
+async def test_create_refuses_zero_window_or_zero_count(client):
+    for payload in (
+        {"window_seconds": 0, "edit_count_threshold": 5},
+        {"window_seconds": 60, "edit_count_threshold": 0},
+    ):
+        response = await client.post("/window-count-rules", json=payload)
+        assert response.status_code == 422
+
+
+async def test_patch_refuses_an_explicit_null(client):
+    created = (
+        await client.post(
+            "/window-count-rules", json={"window_seconds": 60, "edit_count_threshold": 5}
+        )
+    ).json()
+    response = await client.patch(
+        f"/window-count-rules/{created['id']}", json={"window_seconds": None}
+    )
+    assert response.status_code == 422
