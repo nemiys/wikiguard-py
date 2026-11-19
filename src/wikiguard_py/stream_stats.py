@@ -3,8 +3,8 @@
 Shared between the writer (consumer, on every processed event — see
 consumer/stats.py) and the reader (API GET /stats — see api/stats.py), so
 both sides agree on key names without duplicating the strings. Transient
-display data only — never the durable record of anything (see
-architecture-plan.md principle 7).
+display data only — never the durable record of anything; alerts and rules
+live in Postgres.
 """
 
 TOTAL_EVENTS_KEY = "stats:total_events"

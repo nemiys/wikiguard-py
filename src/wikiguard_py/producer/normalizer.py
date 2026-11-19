@@ -1,8 +1,9 @@
 """Turns a raw Wikimedia recentchange payload into our own WikiEditEvent.
 
-Structural filtering only (type/namespace) — never business logic. See
-architecture-plan.md principle #1: the producer never decides what counts
-as "suspicious", only what counts as "a content edit worth passing on".
+Structural filtering only (type/namespace) — never business logic: the
+producer never decides what counts as "suspicious", only what counts as
+"a content edit worth passing on". A rule like Window-Count needs to see
+small edits too, since a burst of small edits is exactly what it looks for.
 """
 
 from wikiguard_py.domain.models import WikiEditEvent
